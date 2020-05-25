@@ -32,6 +32,10 @@ char getch(void);
 
 int registrarMascota(void *puntero);
 
+int verMascota(struct dogType mascota);
+
+int mostrarHistoria(char nombre[], char id[]);
+
 int main(int argc, char **argv)
 {
 	FILE *ptr;
@@ -39,7 +43,7 @@ int main(int argc, char **argv)
 	//ht = hash_db();
 	int opcion, validacion, id, i, h2;
 	struct dogType *mascota, dog;
-	char nombre[32], historia, charId[12];
+	char nombre[32], historia, charId[12], idS[10], respuesta[1], numRegistros[10], contenidoHistoria[50];
 	int clientfd, serverfd, r, tope = 100000000, acc, peticion = 8, opt = 1;
     char *vector, *bufferV;
     vector = (char *)malloc(tope * sizeof(char));
@@ -98,13 +102,23 @@ int main(int argc, char **argv)
 				perror("\n-->Error en send(): ");
 				exit(-1);
 			}
-			//ht = guardarRegistro(ht, (void *)mascota);
+
 			__fpurge(stdin);
 			printf("\n          Presiona cualquier tecla para regresar al menu.");
 			getch();
 			break;
 		case 2:
-			printf("\n          Numero de registros: %i", registros);
+			r = send(clientfd, "2", sizeof(char), 0);
+			if(r < 0){
+				perror("\n-->Error en send(): ");
+				exit(-1);
+			}
+			r = recv(clientfd, numRegistros, sizeof(char) * 10, 0);//recibe numero de registros
+            if(r < 0){
+                perror("\n-->Error en recv(): ");
+                exit(-1);
+            }
+			printf("\n          Numero de registros: %s", numRegistros);
 			printf("\n          ID de la mascota que deseas ver: ");
 			scanf("%i", &id);
 			if (id % 100 != 0)
@@ -115,7 +129,20 @@ int main(int argc, char **argv)
 				getch();
 				break;
 			}
-			/*dog = leerEsctructura(id, dog);
+
+			sprintf(idS, "%i",id);
+			r = send(clientfd, idS, sizeof(char) * 10, 0);
+			if(r < 0){
+				perror("\n-->Error en send(): ");
+				exit(-1);
+			}
+
+			r = recv(clientfd, &dog, sizeof(struct dogType), 0);
+            if(r < 0){
+                perror("\n-->Error en recv(): ");
+                exit(-1);
+            }
+
 			validacion = verMascota(dog);
 			if (validacion == 1)
 			{
@@ -126,13 +153,28 @@ int main(int argc, char **argv)
 				break;
 			}
 			__fpurge(stdin);
-			printf("          Abrir historia clinica? (S: si | N: no): ");
+			printf("          Abrir historia clinica? (S: sì | N: no): ");
 			scanf("%c", &historia);
 			if (historia == 's' || historia == 'S')
 			{
-				sprintf(charId, "%d", id);
+				sprintf(charId, "%d", id);//madar s al servidor para saber si ya hay historia en el sistema
+				r = send(clientfd, "s", sizeof(char), 0);
+				if(r < 0){
+					perror("\n-->Error en send(): ");
+					exit(-1);
+				}
+				r = recv(clientfd, contenidoHistoria, sizeof(char) * 100, 0);
+				if(r < 0){
+					perror("\n-->Error en recv(): ");
+					exit(-1);
+				}
+				if(contenidoHistoria[0] == '*'){//no existe la historia AQUI
 
-				validacion = mostrarHistoria((char *)dog.nombre, charId);
+				}
+				else
+					printf("          historia: %s ", contenidoHistoria);//hacer que aparezca esta info en nano
+
+				validacion = mostrarHistoria((char *)dog.nombre, charId);//haciendolo
 				if (validacion != 0)
 				{
 					perror("          Error abriendo historia");
@@ -144,13 +186,18 @@ int main(int argc, char **argv)
 			}
 			else
 			{
+				r = send(clientfd, "n", sizeof(char), 0);
+				if(r < 0){
+					perror("\n-->Error en send(): ");
+					exit(-1);
+				}
 				__fpurge(stdin);
 				printf("\n          Presiona cualquier tecla para regresar al menu.\n");
 				getch();
 			}
 			break;
 		case 3:
-			printf("\n          Numero de registros: %i\n", registros);
+			//printf("\n          Numero de registros: %i\n", registros);
 			printf("\n          ID de la mascota que deseas borrar: ");
 			scanf("%i", &id);
 			if (id % 100 != 0)
@@ -161,24 +208,36 @@ int main(int argc, char **argv)
 				getch();
 				break;
 			}
-			dog = leerEsctructura(id, dog);
-			if (dog.nombre[0] != '*')
-			{
-				ht = delete_item(ht, (char *)dog.nombre, id);
-				borrarRegistro(id);
-				__fpurge(stdin);
+			r = send(clientfd, "3", sizeof(char), 0);
+			if(r < 0){
+				perror("\n-->Error en send(): ");
+				exit(-1);
+			}
+			sprintf(idS, "%i",id);
+			r = send(clientfd, idS, sizeof(char) * 10, 0);
+			if(r < 0){
+				perror("\n-->Error en send(): ");
+				exit(-1);
+			}
+
+			r = recv(clientfd, respuesta, sizeof(char), 0);
+			if(r < 0){
+				perror("\n-->Error en recv(): ");
+				exit(-1);
+			}
+
+			if(respuesta[0] == 'o'){
 				printf("\n          Presiona cualquier tecla para regresar al menu.\n");
 				getch();
-				break;
 			}
 			else
 			{
 				__fpurge(stdin);
-				printf("          ID invalido. El ID ingresado ya ha sido eliminado del sistema.\n");
+				printf("\n          ID invalido. El ID ingresado ya ha sido eliminado del sistema.\n");
 				printf("\n          Presiona cualquier tecla para regresar al menu.\n");
 				getch();
-				break;
 			}
+			break;
 		case 4:
 			printf("          Ingresa el nombre de la mascota: ");
 			scanf("%s", nombre);
@@ -187,12 +246,27 @@ int main(int argc, char **argv)
 					nombre[i] = toupper(nombre[i]);
 				else
 					nombre[i] = tolower(nombre[i]);
-			print_search(ht, (char *)nombre);
+			r = send(clientfd, "4", sizeof(char), 0);
+			if(r < 0){
+				perror("\n-->Error en send(): ");
+				exit(-1);
+			}
+			r = send(clientfd, nombre, sizeof(char) * 32, 0);
+			if(r < 0){
+				perror("\n-->Error en send(): ");
+				exit(-1);
+			}
+			//recibir todas las mascotas de la busqueda
 			__fpurge(stdin);
 			printf("\n          Presiona cualquier tecla para regresar al menu.\n");
 			getch();
-			break;*/
+			break;
 		case 5:
+			r = send(clientfd, "5", sizeof(char), 0);
+			if(r < 0){
+				perror("\n-->Error en send(): ");
+				exit(-1);
+			}
 			__fpurge(stdin);
 			printf("\n          Presiona cualquier tecla para salir.\n");
 			getch();
@@ -266,6 +340,49 @@ int registrarMascota(void *puntero)
 	mascota->sexo = 'M';
 
 	mascota->next = -1;
+	return 0;
+}
+
+int verMascota(struct dogType mascota)
+{
+	if (mascota.nombre[0] == '*')
+		return 1;
+	else
+	{
+		printf("          Nombre: %s\n", mascota.nombre);
+		printf("          Tipo: %s\n", mascota.tipo);
+		printf("          Edad: %i\n", mascota.edad);
+		printf("          Raza: %s\n", mascota.raza);
+		printf("          Estatura: %i\n", mascota.estatura);
+		printf("          Peso: %f\n", mascota.peso);
+		printf("          Sexo: %c\n", mascota.sexo);
+		return 0;
+	}
+}
+
+int mostrarHistoria(char nombre[], char id[])
+{
+
+	FILE *historia;
+	int r;
+	char dir[500] = "cd ", cwd[500];
+
+	if (getcwd(cwd, sizeof(cwd)) == NULL)
+	{
+		perror("error getcwd()");
+		exit(-1);
+	}
+
+	strcat(dir, "historias_clinicas");
+	dir[23] = 92;
+	strcat(dir, " && gedit ");
+	strcat(dir, id);
+	strcat(dir, "_");
+	strcat(dir, nombre);
+	strcat(dir, ".txt");
+
+	system(dir);
+
 	return 0;
 }
 

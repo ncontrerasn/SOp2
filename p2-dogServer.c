@@ -33,8 +33,8 @@ int main(){
     vector2 = (char *)malloc(tope * sizeof(char));
     struct sockaddr_in server, client;
     socklen_t tamano;
-    char opcion[1], id[10];
-    struct dogType *mascota;
+    char opcion[1], idS[10], nombre[32], historia[1];
+    struct dogType *mascota, m2;
 
     mascota = malloc(sizeof(struct dogType));
 	if (mascota == NULL)
@@ -103,7 +103,7 @@ int main(){
 
     printf("%c", opcion[0]);
     
-    switch (buf[0])
+    switch (opcion[0])
 		{
 		case '1':
             r = recv(clientfd, mascota, sizeof(struct dogType), 0);
@@ -115,28 +115,98 @@ int main(){
             break;
 
         case '2':
-            r = recv(clientfd, id, sizeof(char) * 10, 0);
+            r = send(clientfd, "920", sizeof(char) * 3, 0);
+			if(r < 0){
+				perror("\n-->Error en send(): ");
+				exit(-1);
+			}
+
+            r = recv(clientfd, idS, sizeof(char) * 10, 0);
             if(r < 0){
                 perror("\n-->Error en recv(): ");
                 exit(-1);
             }
-            fprintf(f,"[Fecha %s] [Cliente %s] [Lectura] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, sexo: %c]\n", bufff, clientip, mascota->nombre, mascota->tipo, mascota->edad, mascota->raza, mascota->estatura, mascota->peso, mascota->sexo);
-            
+            printf("id %s", idS);
+
+            sprintf(m2.nombre,"Luna");
+            sprintf(m2.tipo,"perro");
+            m2.edad = 5;
+            sprintf(m2.raza,"criollo");
+            m2.estatura = 21;
+            m2.peso = 9;
+            m2.sexo = 'M';
+
+            m2.next = -1;
+
+            r = send(clientfd, &m2, sizeof(struct dogType), 0);
+			if(r < 0){
+				perror("\n-->Error en send(): ");
+				exit(-1);
+			}
+            r = recv(clientfd, historia, sizeof(char), 0);
+            if(r < 0){
+                perror("\n-->Error en recv(): ");
+                exit(-1);
+            }
+            if(historia[0] == 's'){//revisar si ya existe la historia de ese perro
+                //si existe
+                r = send(clientfd, "este es el contenido de la historia del perro", sizeof(char) * 50, 0);//esto es si existiese
+                if(r < 0){
+                    perror("\n-->Error en send(): ");
+                    exit(-1);
+                }
+                //en caso que no exista
+                r = send(clientfd, "*", sizeof(char), 0);//esto es si existiese
+                if(r < 0){
+                    perror("\n-->Error en send(): ");
+                    exit(-1);
+                }
+            }      
+            fprintf(f,"[Fecha %s] [Cliente %s] [Lectura] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, sexo: %c]\n", bufff, clientip, m2.nombre, m2.tipo, m2.edad, m2.raza, m2.estatura, m2.peso, m2.sexo);
             break;
 
         case '3':
+            r = recv(clientfd, idS, sizeof(char) * 10, 0);
+            if(r < 0){
+                perror("\n-->Error en recv(): ");
+                exit(-1);
+            }
+            printf("id %s", idS);
+            sprintf(m2.nombre,"Luna");
+            sprintf(m2.tipo,"perro");
+            m2.edad = 5;
+            sprintf(m2.raza,"criollo");
+            m2.estatura = 21;
+            m2.peso = 9;
+            m2.sexo = 'M';
+
+            m2.next = -1;
+            //if exito en el borrado, mandar o, de lo contrario, mandar x
+            r = send(clientfd, "x", sizeof(char), 0);
+			if(r < 0){
+				perror("\n-->Error en send(): ");
+				exit(-1);
+			}
+
+            fprintf(f,"[Fecha %s] [Cliente %s] [Borrado] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, sexo: %c]\n", bufff, clientip, m2.nombre, m2.tipo, m2.edad, m2.raza, m2.estatura, m2.peso, m2.sexo);
             break;
 
         case '4':
+            r = recv(clientfd, nombre, sizeof(char) * 32, 0);
+            if(r < 0){
+                perror("\n-->Error en recv(): ");
+                exit(-1);
+            }
+            printf("nombre %s", nombre);
+            //mandar todas las mascotas de la busquda
+            fprintf(f,"[Fecha %s] [Cliente %s] [Bùsqueda] [Cadena buscada: %s]\n", bufff, clientip, nombre);
+
             break;
 
         case '5':
             break;
         }
 
-        
-    printf("nombre: %s\n", mascota->nombre);
-    printf("edad: %d\n", mascota->edad);
     close(clientfd);
     close(serverfd);   
 }
