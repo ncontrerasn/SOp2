@@ -176,7 +176,7 @@ int main(int argc, char **argv)
 					exit(-1);
 				}
 				
-				//mandarHistoria((char *)dog.nombre, charId, clientfd);
+				mandarHistoria((char *)dog.nombre, charId, clientfd);
 				__fpurge(stdin);
 				printf("\n          Presiona cualquier tecla para regresar al menu.\n");
 				getch();
@@ -397,19 +397,15 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 	strcat(archivo, ".txt");
 
 	historia = fopen("100_Luna.txt", "w");
+	recv(clientfd,contenidoHistoria,500, 0);
 
-	while(recv(clientfd,contenidoHistoria,500, 0) > 0)
-	{
-		fprintf(historia, "%s", contenidoHistoria);
-		printf("----");
-	}
+	fprintf(historia, "%s", contenidoHistoria);
 
 	fclose(historia);
 	strcat(dir, " && gedit ");
 	strcat(dir, archivo);
 
 	system("gedit 100_Luna.txt");
-
 
 	return 0;
 }
@@ -419,7 +415,7 @@ int mandarHistoria(char nombre[], char id[], int clientfd)
 
 	FILE *historia;
 	int r = 1;
-	char contenidoHistoria[50], archivo[50], dir[500];
+	char contenidoHistoria[50], archivo[50], dir[500], buff[500];
 
 	
 	strcat(archivo, id);
@@ -429,7 +425,9 @@ int mandarHistoria(char nombre[], char id[], int clientfd)
 
 	historia = fopen("100_Luna.txt", "r");
     if(historia == NULL) printf("marica");
-    while ( fgets(contenidoHistoria,500,historia) != NULL ){ // fgets reads upto MAX character or EOF 
+	fgets(buff,500,historia);
+    r = send(clientfd,buff,sizeof(buff), 0);
+    /*while ( fgets(contenidoHistoria,500,historia) != NULL ){ // fgets reads upto MAX character or EOF 
     r = write(clientfd,contenidoHistoria,sizeof(contenidoHistoria));//send(clientfd, buff, sizeof(char) * 500, 0);
 			if(r < 0){
 				perror("\n-->Error en send(): ");
@@ -437,7 +435,7 @@ int mandarHistoria(char nombre[], char id[], int clientfd)
 			}
            printf("%s",contenidoHistoria); 
            printf("%d",r); 
-    }
+    }*/
     fclose(historia);
 
 	return 0;

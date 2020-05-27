@@ -159,6 +159,8 @@ int main(){
 					exit(-1);
 				}
 
+                guardarHistoria((char *)m2.nombre, idS, clientfd);
+
             }
             fprintf(f,"[Fecha %s] [Cliente %s] [Lectura] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, sexo: %c]\n", bufff, clientip, m2.nombre, m2.tipo, m2.edad, m2.raza, m2.estatura, m2.peso, m2.sexo);
             break;
@@ -270,15 +272,16 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 
 	historia = fopen("historias_clinicas/100_Luna.txt", "r");
     if(historia == NULL) printf("marica");
-    while ( fgets(buff,500,historia) != NULL ){ // fgets reads upto MAX character or EOF 
+    //while ( ) != NULL ){ // fgets reads upto MAX character or EOF 
+    fgets(buff,500,historia);
     r = send(clientfd,buff,sizeof(buff), 0);//send(clientfd, buff, sizeof(char) * 500, 0);
 			if(r < 0){
 				perror("\n-->Error en send(): ");
 				exit(-1);
 			}
-           printf("%s",buff); 
-           printf("%d",r); 
-    }
+    printf("%s",buff); 
+    printf("%d",r); 
+    //}
     printf("----");
     fclose(historia);
 
@@ -308,10 +311,9 @@ int guardarHistoria(char nombre[], char id[], int clientfd)
 
 	historia = fopen("historias_clinicas/100_Luna.txt", "w");
     if(historia == NULL) printf("marica");
-    while(read(clientfd,buff,500) > 0)
-	{
-		fprintf(historia, "%s", buff);
-	}
+    recv(clientfd,buff,500, 0);
+
+	fprintf(historia, "%s", buff);
     fclose(historia);
 
 	return 0;
