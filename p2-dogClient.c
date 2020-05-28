@@ -40,10 +40,10 @@ int mandarHistoria(char nombre[], char id[], int clientfd);
 
 int main(int argc, char **argv)
 {
-	int opcion, validacion, id, i, h2, buffsize = 10000;
+	int opcion, validacion, id, i, buffsize = 100000000;
 	struct dogType *mascota, dog;
-	char nombre[32], historia, charId[12], idS[10], respuesta[1], numRegistros[10], contenidoHistoria[50];
-	int clientfd, serverfd, r, tope, acc, opt = 1;
+	char nombre[32], historia, charId[12], idS[10], respuesta, numRegistros[10];
+	int clientfd, serverfd, r, opt = 1;
 	struct sockaddr_in client;
 	struct hostent *he;
 
@@ -169,19 +169,24 @@ int main(int argc, char **argv)
 					exit(-1);
 				}
 
-				validacion = mostrarHistoria((char *)dog.nombre, charId, clientfd); //haciendolo
+				validacion = mostrarHistoria((char *)dog.nombre, charId, clientfd); 
 				if (validacion != 0)
 				{
 					perror("          Error abriendo historia");
 					exit(-1);
 				}
 				
-				mandarHistoria((char *)dog.nombre, charId, clientfd);
-				__fpurge(stdin);
-				printf("\n          Presiona cualquier tecla para regresar al menu.\n");
-				getch();
+				validacion = mandarHistoria((char *)dog.nombre, charId, clientfd);
+				if (validacion != 0)
+				{
+					perror("          Error mandando historia");
+					exit(-1);
+				}
 			}
 
+			__fpurge(stdin);
+			printf("\n          Presiona cualquier tecla para regresar al menu.\n");
+			getch();
 			break;
 		case 3:
 			r = send(clientfd, "3", sizeof(char), 0);
@@ -217,14 +222,14 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 
-			r = recv(clientfd, respuesta, sizeof(char), 0);
+			r = recv(clientfd, &respuesta, sizeof(char), 0);
 			if (r < 0)
 			{
 				perror("\n-->Error en recv(): ");
 				exit(-1);
 			}
 
-			if (respuesta[0] == 'o')
+			if (respuesta == 'o')
 			{
 				printf("\n          Presiona cualquier tecla para regresar al menu.\n");
 				getch();
@@ -257,29 +262,27 @@ int main(int argc, char **argv)
 				perror("\n-->Error en send(): ");
 				exit(-1);
 			}
-			struct dogType *mascotas, *bufferX;
+
+			struct dogType *mascotas, *bufferConsulta;
             mascotas = (struct dogType *)malloc(50 * sizeof(struct dogType));
-			bufferX = (struct dogType *)malloc(50 * sizeof(struct dogType));
+			bufferConsulta = (struct dogType *)malloc(50 * sizeof(struct dogType));
 			int acc;
+
 			//recibir todas las mascotas de la busqueda
 			do{
-				r = recv(clientfd, bufferX, sizeof(struct dogType)*50, 0);
+				r = recv(clientfd, bufferConsulta, sizeof(struct dogType)*50, 0);
 				if(r < 0){
 					perror("\n-->Error en recv(): ");
 					exit(-1);
 				}
 
-				mascotas=bufferX;
+				mascotas = bufferConsulta;
 
 			} while (r != 0);
 
-			printf("******");
-
-			for (int i = 0; i < 50; i++){
-					verMascota(mascotas[i]);
-					printf("i: %d", i);
-				}
-
+			for (int i = 0; i < 50; i++)
+				verMascota(mascotas[i]);
+				
 			__fpurge(stdin);
 			printf("\n          Presiona cualquier tecla para regresar al menu.\n");
 			getch();
@@ -388,24 +391,36 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 {
 
 	FILE *historia;
-	int r = 1;
-	char contenidoHistoria[50], archivo[50], dir[500];
+	char contenidoHistoria[50], archivo[500], dir[500] = "gedit ";
+	int r;
 
-	strcat(archivo, id);
+	strcpy(archivo, id);
 	strcat(archivo, "_");
 	strcat(archivo, nombre);
 	strcat(archivo, ".txt");
 
-	historia = fopen("100_Luna.txt", "w");
-	recv(clientfd,contenidoHistoria,500, 0);
+	historia = fopen(archivo, "w");
+	if (archivo == NULL)
+	{
+		perror("error fopen");
+		exit(-1);
+	}
+	r = recv(clientfd,contenidoHistoria,500, 0);
+	if(r < 0){
+		perror("\n-->Error en recv(): ");
+		exit(-1);
+	}
 
 	fprintf(historia, "%s", contenidoHistoria);
 
 	fclose(historia);
-	strcat(dir, " && gedit ");
-	strcat(dir, archivo);
 
-	system("gedit 100_Luna.txt");
+	strcat(dir, id);
+	strcat(dir, "_");
+	strcat(dir, nombre);
+	strcat(dir, ".txt");
+
+	system(dir);
 
 	return 0;
 }
@@ -427,16 +442,9 @@ int mandarHistoria(char nombre[], char id[], int clientfd)
     if(historia == NULL) printf("marica");
 	fgets(buff,500,historia);
     r = send(clientfd,buff,sizeof(buff), 0);
-    /*while ( fgets(contenidoHistoria,500,historia) != NULL ){ // fgets reads upto MAX character or EOF 
-    r = write(clientfd,contenidoHistoria,sizeof(contenidoHistoria));//send(clientfd, buff, sizeof(char) * 500, 0);
-			if(r < 0){
-				perror("\n-->Error en send(): ");
-				exit(-1);
-			}
-           printf("%s",contenidoHistoria); 
-           printf("%d",r); 
-    }*/
     fclose(historia);
+
+	system("rm 100_Luna.txt");
 
 	return 0;
 }
