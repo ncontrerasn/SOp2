@@ -42,7 +42,7 @@ int main(int argc, char **argv)
 {
 	int opcion, validacion, id, i, h2, buffsize = 10000,numRegistros;
 	struct dogType *mascota, dog;
-	char nombre[32], historia, charId[12], idS[10], respuesta[1], contenidoHistoria[50];
+	char nombre[32], historia, charId[12], idS[10], respuesta[1], contenidoHistoria[50], consulta;
 	int clientfd, serverfd, r, tope, acc, opt = 1;
 	struct sockaddr_in client;
 	struct hostent *he;
@@ -173,6 +173,15 @@ int main(int argc, char **argv)
 				printf("\n          Presiona cualquier tecla para regresar al menu.\n");
 				getch();
 			}
+			else
+			{
+				r = send(clientfd, "n", sizeof(char), 0);
+				if (r < 0)
+				{
+					perror("\n-->Error en send(): ");
+					exit(-1);
+				}
+			}
 
 			break;
 		case 3:
@@ -246,9 +255,12 @@ int main(int argc, char **argv)
 			int acc;
 			int pos;
 			//recibir todas las mascotas de la busqueda
+			r = recv(clientfd, &consulta, sizeof(char), 0);
+			if(consulta == 'n')
+				r = 0;
 
-			while( r!=0){
-				recv(clientfd, &pos, sizeof(int), 0);
+			while(r != 0){
+				r = recv(clientfd, &pos, sizeof(int), 0);
 				r = recv(clientfd, mascota, sizeof(struct dogType), 0);
 				if(r < 0){
 					perror("\n-->Error en recv(): ");
@@ -256,9 +268,8 @@ int main(int argc, char **argv)
 				}
 				printf("\n          ID: %d\n", pos);
 				verMascota(*mascota);
-
-
 			}
+
 	
 
 			printf("******");
@@ -362,25 +373,36 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 {
 
 	FILE *historia;
-	int r = 1;
-	char contenidoHistoria[50], archivo[50], dir[500];
+	char contenidoHistoria[50], archivo[500], dir[500] = "gedit ";
+	int r;
 
-	strcat(archivo, id);
+	strcpy(archivo, id);
 	strcat(archivo, "_");
 	strcat(archivo, nombre);
 	strcat(archivo, ".txt");
 
-	historia = fopen("100_Luna.txt", "w");
-	recv(clientfd,contenidoHistoria,500, 0);
+	historia = fopen(archivo, "w");
+	if (archivo == NULL)
+	{
+		perror("error fopen");
+		exit(-1);
+	}
+	r = recv(clientfd,contenidoHistoria,500, 0);
+	if(r < 0){
+		perror("\n-->Error en recv(): ");
+		exit(-1);
+	}
 
 	fprintf(historia, "%s", contenidoHistoria);
 
 	fclose(historia);
-	strcat(dir, " && gedit ");
-	strcat(dir, archivo);
 
-	system("gedit 100_Luna.txt");
+	strcat(dir, id);
+	strcat(dir, "_");
+	strcat(dir, nombre);
+	strcat(dir, ".txt");
 
+	system(dir);
 	return 0;
 }
 
@@ -391,7 +413,6 @@ int mandarHistoria(char nombre[], char id[], int clientfd)
 	int r = 1;
 	char contenidoHistoria[50], archivo[50], dir[500], buff[500];
 
-	
 	strcat(archivo, id);
 	strcat(archivo, "_");
 	strcat(archivo, nombre);
@@ -401,15 +422,6 @@ int mandarHistoria(char nombre[], char id[], int clientfd)
     if(historia == NULL) printf("marica");
 	fgets(buff,500,historia);
     r = send(clientfd,buff,sizeof(buff), 0);
-    /*while ( fgets(contenidoHistoria,500,historia) != NULL ){ // fgets reads upto MAX character or EOF 
-    r = write(clientfd,contenidoHistoria,sizeof(contenidoHistoria));//send(clientfd, buff, sizeof(char) * 500, 0);
-			if(r < 0){
-				perror("\n-->Error en send(): ");
-				exit(-1);
-			}
-           printf("%s",contenidoHistoria); 
-           printf("%d",r); 
-    }*/
     fclose(historia);
 
 	return 0;

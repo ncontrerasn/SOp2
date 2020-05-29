@@ -448,8 +448,11 @@ int main(){
     
 
     FILE *f;
-    f = fopen("serverDogs.log", "a+"); // a+ (create + append) option will allow appending which is useful in a log file
-    if (f == NULL) { /* Something is wrong   */}
+    f = fopen("serverDogs.log", "a+");
+    if (f == NULL) {
+		perror("Error fopen");
+		exit(-1);
+	}
         
     serverfd = socket(AF_INET, SOCK_STREAM, 0);
     if(serverfd < 0){
@@ -489,178 +492,177 @@ int main(){
     char *clientip = (char *)malloc(20 * sizeof(char));
     strcpy(clientip, inet_ntoa(addr.sin_addr));
 
-    r = recv(clientfd, opcion, sizeof(char), 0);
-    if(r < 0){
-        perror("\n-->Error en recv(): ");
-        exit(-1);
-    }
+	do{
+		
+		r = recv(clientfd, opcion, sizeof(char), 0);
+		if(r < 0){
+			perror("\n-->Error en recv(): ");
+			exit(-1);
+		}
 
-    printf("%c", opcion[0]);
-    
-    switch (opcion[0])
-		{
-		case '1':
-            r = recv(clientfd, mascota, sizeof(struct dogType), 0);
-	    ht = guardarRegistro(ht,(void *)mascota);
-            if(r < 0){
-                perror("\n-->Error en recv(): ");
-                exit(-1);
-            }
-
-            fprintf(f,"[Fecha %s] [Cliente %s] [Inserciòn] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, sexo: %c]\n", bufff, clientip, mascota->nombre, mascota->tipo, mascota->edad, mascota->raza, mascota->estatura, mascota->peso, mascota->sexo);
-            break;
-
-        case '2':
-            r = send(clientfd, "920", sizeof(char) * 3, 0);
-			if(r < 0){
-				perror("\n-->Error en send(): ");
-				exit(-1);
-			}
-	    
-            r = recv(clientfd, &id, sizeof(int), 0);
-            if(r < 0){
-                perror("\n-->Error en recv(): ");
-                exit(-1);
-            }
-            printf("id %d", id);
-	    struct dogType dog;
-	    dog = leerEsctructura(id, dog);
-
-            r = send(clientfd, &dog, sizeof(struct dogType), 0);
-			if(r < 0){
-				perror("\n-->Error en send(): ");
-				exit(-1);
-			}
-
-            r = recv(clientfd, historia, sizeof(char), 0);
-            if(r < 0){
-                perror("\n-->Error en recv(): ");
-                exit(-1);
-            }
-
-            if(historia[0] == 's'){//revisar si ya existe la historia de ese perro
-                
-                r = mostrarHistoria((char *)m2.nombre, idS, clientfd);
-				if (r != 0)
-				{
-					perror("          Error abriendo historia");
+		printf("%c", opcion[0]);
+		
+		switch (opcion[0])
+			{
+			case '1':
+				r = recv(clientfd, mascota, sizeof(struct dogType), 0);
+				ht = guardarRegistro(ht,(void *)mascota);
+				if(r < 0){
+					perror("\n-->Error en recv(): ");
 					exit(-1);
 				}
 
-                guardarHistoria((char *)m2.nombre, idS, clientfd);
+				fprintf(f,"[Fecha %s] [Cliente %s] [Inserciòn] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, sexo: %c]\n", bufff, clientip, mascota->nombre, mascota->tipo, mascota->edad, mascota->raza, mascota->estatura, mascota->peso, mascota->sexo);
+				break;
 
-            }
-            fprintf(f,"[Fecha %s] [Cliente %s] [Lectura] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, sexo: %c]\n", bufff, clientip, m2.nombre, m2.tipo, m2.edad, m2.raza, m2.estatura, m2.peso, m2.sexo);
-            break;
-
-        case '3':
-            r = send(clientfd, &registros , sizeof(int), 0);
-			if(r < 0){
-				perror("\n-->Error en send(): ");
-				exit(-1);
-			}
-
-            r = recv(clientfd, &id, sizeof(int), 0);
-            if(r < 0){
-                perror("\n-->Error en recv(): ");
-                exit(-1);
-            }
-         
-	    dog = leerEsctructura(id, dog);
-	    if(dog.nombre[0] != '*'){
-		ht = delete_item(ht, (char *) dog.nombre, id);
-		borrarRegistro(id);
-		r = send(clientfd, "o", sizeof(char), 0);
-		break;
-	    }
-	    else{
-		 r = send(clientfd, "x", sizeof(char), 0);
-	    }
-
-
-
-            //if exito en el borrado, mandar o, de lo contrario, mandar x
-           
-	   if(r < 0){
-		perror("\n-->Error en send(): ");
-		exit(-1);
-	    }
-
-            fprintf(f,"[Fecha %s] [Cliente %s] [Borrado] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, sexo: %c]\n", bufff, clientip, m2.nombre, m2.tipo, m2.edad, m2.raza, m2.estatura, m2.peso, m2.sexo);
-            break;
-
-        case '4':
-	    r = recv(clientfd, nombre, sizeof(char) * 32, 0);
-            if(r < 0){
-                perror("\n-->Error en recv(): ");
-                exit(-1);
-            }
-	    key= (char *)nombre;
-            printf("nombre %s", key);
-	
-            Ht_item* val = ht_search(ht, key);
-	    if (val == NULL) {
-		printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", key);
-		break;
-	    }
-	    else {
-		FILE* archivo;
-		archivo = fopen("dataDogs.dat", "ab+");
-		if(archivo == NULL){
-			perror("Error fopen");
-			exit(-1);
-		}
-		struct dogType mascota;
-		int pos = val->head, r;
-		r = fseek(archivo, val->head, SEEK_SET);
-		if(r != 0){
-			perror("Error fseek");
-			exit(-1);
-		}
-		r = fread(&mascota, sizeof(struct dogType), 1, archivo);
-		if(r = 0){
-			perror("Error fread");
-			exit(-1);
-		}
-	
-		while(mascota.next != -1){
-			if(strcmp(mascota.nombre, key) == 0){
-				r = send(clientfd, &pos, sizeof(int), 0);
-				r = send(clientfd, &mascota, sizeof(struct dogType), 0);
-			}
-			r = fseek(archivo,mascota.next, SEEK_SET);
-			if(r != 0){
-				perror("Error fseek");
-				exit(-1);
-			}
-			pos = ftell(archivo);
-			r = fread(&mascota, sizeof(struct dogType), 1, archivo);
-			if(r = 0){
-				perror("Error fread");
-				exit(-1);
-			}
+			case '2':
+				r = send(clientfd, "920", sizeof(char) * 3, 0);
+				if(r < 0){
+					perror("\n-->Error en send(): ");
+					exit(-1);
+				}
 			
+				r = recv(clientfd, &id, sizeof(int), 0);
+				if(r < 0){
+					perror("\n-->Error en recv(): ");
+					exit(-1);
+				}
+				printf("id %d", id);
+				struct dogType dog;
+				dog = leerEsctructura(id, dog);
+
+				r = send(clientfd, &dog, sizeof(struct dogType), 0);
+				if(r < 0){
+					perror("\n-->Error en send(): ");
+					exit(-1);
+				}
+
+				r = recv(clientfd, historia, sizeof(char), 0);
+				if(r < 0){
+					perror("\n-->Error en recv(): ");
+					exit(-1);
+				}
+
+				if(historia[0] == 's'){//revisar si ya existe la historia de ese perro
+					
+					r = mostrarHistoria((char *)m2.nombre, idS, clientfd);
+					if (r != 0)
+					{
+						perror("          Error abriendo historia");
+						exit(-1);
+					}
+
+					guardarHistoria((char *)m2.nombre, idS, clientfd);
+
+				}
+				fprintf(f,"[Fecha %s] [Cliente %s] [Lectura] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, sexo: %c]\n", bufff, clientip, m2.nombre, m2.tipo, m2.edad, m2.raza, m2.estatura, m2.peso, m2.sexo);
+				break;
+
+			case '3':
+				r = send(clientfd, &registros , sizeof(int), 0);
+				if(r < 0){
+					perror("\n-->Error en send(): ");
+					exit(-1);
+				}
+
+				r = recv(clientfd, &id, sizeof(int), 0);
+				if(r < 0){
+					perror("\n-->Error en recv(): ");
+					exit(-1);
+				}
+			
+				dog = leerEsctructura(id, dog);
+				if(dog.nombre[0] != '*'){
+					ht = delete_item(ht, (char *) dog.nombre, id);
+					borrarRegistro(id);
+					r = send(clientfd, "o", sizeof(char), 0);
+					
+				break;
+				}
+				else{
+					r = send(clientfd, "x", sizeof(char), 0);
+					if(r < 0){
+					perror("\n-->Error en send(): ");
+					exit(-1);
+					}
+				}
+				fprintf(f,"[Fecha %s] [Cliente %s] [Borrado] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, sexo: %c]\n", bufff, clientip, m2.nombre, m2.tipo, m2.edad, m2.raza, m2.estatura, m2.peso, m2.sexo);
+				break;
+
+			case '4':
+				r = recv(clientfd, nombre, sizeof(char) * 32, 0);
+				if(r < 0){
+					perror("\n-->Error en recv(): ");
+					exit(-1);
+				}
+				key= (char *)nombre;
+				printf("nombre %s", key);
+		
+				Ht_item* val = ht_search(ht, key);
+				if (val == NULL) {
+					printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", key);
+					r = send(clientfd, "n", sizeof(char), 0);
+					break;
+				}
+				else {
+					r = send(clientfd, "s", sizeof(char), 0);
+					FILE* archivo;
+					archivo = fopen("dataDogs.dat", "ab+");
+					if(archivo == NULL){
+						perror("Error fopen");
+						exit(-1);
+					}
+					struct dogType mascota;
+					int pos = val->head, r;
+					r = fseek(archivo, val->head, SEEK_SET);
+					if(r != 0){
+						perror("Error fseek");
+						exit(-1);
+					}
+					r = fread(&mascota, sizeof(struct dogType), 1, archivo);
+					if(r = 0){
+						perror("Error fread");
+						exit(-1);
+					}
+				
+					while(mascota.next != -1){
+						if(strcmp(mascota.nombre, key) == 0){
+							r = send(clientfd, &pos, sizeof(int), 0);
+							r = send(clientfd, &mascota, sizeof(struct dogType), 0);
+							printf("r: %d", r);
+						}
+						r = fseek(archivo,mascota.next, SEEK_SET);
+						if(r != 0){
+							perror("Error fseek");
+							exit(-1);
+						}
+						pos = ftell(archivo);
+						r = fread(&mascota, sizeof(struct dogType), 1, archivo);
+						if(r = 0){
+							perror("Error fread");
+							exit(-1);
+						}
+						
+					}
+					if(strcmp(mascota.nombre, key) == 0){
+						r = send(clientfd, &pos, sizeof(int), 0);
+						r = send(clientfd, &mascota, sizeof(struct dogType), 0);
+					}
+					r = fclose(archivo);
+					if(r < 0){
+						perror("Error fclose");
+						exit(-1);
+					}
+				}
+				
+				fprintf(f,"[Fecha %s] [Cliente %s] [Bùsqueda] [Cadena buscada: %s]\n", bufff, clientip, nombre);
+				break;
+
+			case '5':
+				break;
 		}
-		if(strcmp(mascota.nombre, key) == 0){
-			r = send(clientfd, &pos, sizeof(int), 0);
-			r = send(clientfd, &mascota, sizeof(struct dogType), 0);
-		}
-		r = fclose(archivo);
-		if(r < 0){
-			perror("Error fclose");
-			exit(-1);
-		}
-    	    }
-            
 
-
-            fprintf(f,"[Fecha %s] [Cliente %s] [Bùsqueda] [Cadena buscada: %s]\n", bufff, clientip, nombre);
-
-            break;
-
-        case '5':
-            break;
-        }
+	} while (opcion[0] != '5');
     
 
     close(clientfd);
@@ -684,7 +686,6 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 
 	strcat(dir, "historias_clinicas");
 	dir[23] = 92;
-	//strcat(dir, " && gedit ");
 	strcat(dir, id);
 	strcat(dir, "_");
 	strcat(dir, nombre);
@@ -692,17 +693,14 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 
 	historia = fopen("historias_clinicas/100_Luna.txt", "r");
     if(historia == NULL) printf("marica");
-    //while ( ) != NULL ){ // fgets reads upto MAX character or EOF 
     fgets(buff,500,historia);
-    r = send(clientfd,buff,sizeof(buff), 0);//send(clientfd, buff, sizeof(char) * 500, 0);
+    r = send(clientfd,buff,sizeof(buff), 0);
 			if(r < 0){
 				perror("\n-->Error en send(): ");
 				exit(-1);
 			}
     printf("%s",buff); 
     printf("%d",r); 
-    //}
-    printf("----");
     fclose(historia);
 
 	return 0;
@@ -723,7 +721,6 @@ int guardarHistoria(char nombre[], char id[], int clientfd)
 
 	strcat(dir, "historias_clinicas");
 	dir[23] = 92;
-	//strcat(dir, " && gedit ");
 	strcat(dir, id);
 	strcat(dir, "_");
 	strcat(dir, nombre);
