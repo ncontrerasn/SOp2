@@ -14,7 +14,6 @@
 #define BUF_LEN 256
 #define CAPACITY 1800
 
-
 struct dogType
 {
 	char nombre[32];
@@ -31,429 +30,92 @@ int mostrarHistoria(char nombre[], char id[], int clientfd);
 
 int guardarHistoria(char nombre[], char id[], int clientfd);
 
-//NUMERO REGISTROS
-int registros=0;
-
-//HASH
-unsigned long hash_function(char *str)
-{
-	unsigned long i = 0;
-	int j;
-	for (j = 0; str[j]; j++)
-		i += str[j];
-	return i % CAPACITY;
-}
+unsigned long hash_function(char *str);
 
 typedef struct Ht_item Ht_item;
- 
-// Define the Hash Table Item here
+
 struct Ht_item {
     int head;
     int tail;
 };
  
 typedef struct HashTable HashTable;
- 
-// Define the Hash Table here
+
 struct HashTable {
-    // Contains an array of pointers
-    // to items
+
     Ht_item** items;
     int size;
     int count;
 };
  
-Ht_item* create_item(int key, int value) {
-    // Creates a pointer to a new hash table item
-    Ht_item* item = (Ht_item*) malloc (sizeof(Ht_item));
-    item->head = key;
-    item->tail = value;
-    return item;
-}
- 
-HashTable* create_table(int size) {
-    // Creates a new HashTable
-    int i;
-    HashTable* table = (HashTable*) malloc (sizeof(HashTable));
-    table->size = size;
-    table->count = 0;
-    table->items = (Ht_item**) calloc (table->size, sizeof(Ht_item*));
-    for (i = 0; i < table->size; i++)
-        table->items[i] = NULL;
-    return table;
-}
- 
-void free_item(Ht_item* item) {
-    // Frees an item
-    free(&item->head);
-    free(&item->tail);
-    free(item);
-}
- 
-void free_table(HashTable* table) {
-    // Frees the table
-    int i;
-    for (i = 0; i < table->size; i++) {
-        Ht_item* item = table->items[i];
-        if (item != NULL)
-            free_item(item);
-    }
-    free(table->items);
-    free(table);
-}
+Ht_item* create_item(int key, int value);
 
-void print_table(HashTable* table) {
-	int i;
-    printf("\nHash Table\n-------------------\n");
-    for (i = 0; i < table->size; i++)
-        if (table->items[i])
-            printf("Index:%d, Key:%d, Value:%d\n", i, table->items[i]->head, table->items[i]->tail);
-    printf("-------------------\n\n");
-}
+HashTable* create_table(int size) ;
 
-HashTable* ht_insert(HashTable* table,char* key, int value) {
-    registros++;
-    unsigned long index = hash_function(key);
-    Ht_item* current_item = table->items[index];
-    if (current_item == NULL) {
-        // Key does not exist.
-        if (table->count == table->size) {
-            // Hash Table Full
-            printf("Insert Error: Hash Table is full\n");
-            return NULL;
-        }
-        // Insert directly
-        Ht_item* item = create_item(value, value);
-        table->items[index] = item; 
-		//print_table(table);
-        table->count++;
-		return table;
-    }else {
-        // Scenario 1: We only need to update value
-        int posicion = current_item->tail, r;
-	    FILE* archivo;
-	    archivo = fopen("dataDogs.dat", "rb+");
-	    if (archivo == NULL){
-		perror("error fopen");
-		exit(-1);
-   	}
-	    struct dogType mascota;
-	    r = fseek(archivo, posicion, SEEK_SET);
-	    if(r != 0){
-			perror("Error fseek");
-			exit(-1);
-		}
-	    r = fread(&mascota, sizeof(struct dogType), 1, archivo);
-	    if(r = 0){
-			perror("Error fread");
-			exit(-1);
-		}
-        mascota.next = value;
-	    current_item->tail = value;
-	    r = fseek(archivo, posicion, SEEK_SET);
-	    if(r != 0){
-			perror("Error fseek");
-			exit(-1);
-		}
-	    r = fwrite(&mascota, sizeof(struct dogType), 1, archivo);
-	    if(r = 0){
-			perror("Error fwrite");
-			exit(-1);
-		}
- 	    r = fclose(archivo);
- 	    if(r < 0){
-			perror("Error fclose");
-			exit(-1);
-		}
-	    return table;
-    }
-}
+void free_item(Ht_item* item);
 
-Ht_item* ht_search(HashTable* table, char* key) {
-    // Searches the key in the hashtable
-    // and returns NULL if it doesn't exist
-    int index = hash_function(key);
-    Ht_item* item = table->items[index];
-    // Ensure that we move to a non NULL item
-    if (item != NULL)
-        return item;
-    return NULL;
-}
+void free_table(HashTable* table);
 
+void print_table(HashTable* table);
 
-HashTable* guardarRegistro(HashTable* table, void *puntero){
-	FILE* archivo;
-	struct dogType* mascota;
-	mascota = puntero;
-	int r;
-	
-	archivo = fopen("dataDogs.dat", "ab+");
-	if(archivo == NULL){
-		perror("Error fopen");
-		exit(-1);
-	}
-	r = fseek(archivo, 0, SEEK_END);
-	if(r != 0){
-		perror("Error fseek");
-		exit(-1);
-	}
-	r = fwrite(puntero, sizeof(struct dogType), 1, archivo);
-	if(r = 0){
-		perror("Error fwrite");
-		exit(-1);
-	}
-	int posicion = ftell(archivo)- sizeof(struct dogType);
-	table = ht_insert(table, mascota->nombre, posicion);
-	r = fclose(archivo);
-	if(r < 0){
-		perror("Error fclose");
-		exit(-1);
-	}
-	return table;
-}
+HashTable* ht_insert(HashTable* table,char* key, int value);
 
+Ht_item* ht_search(HashTable* table, char* key);
 
-struct HashTable* hash_db(){
-	FILE *ptr;
-	HashTable* ht = create_table(CAPACITY);
-	struct dogType dog; 
-	int r;
-	
-    ptr = fopen("dataDogs.dat","rb");
-	if (ptr == NULL){
-		perror("error fopen");
-		return NULL;
-   	}
-	while (fread(&dog, sizeof(struct dogType), 1 ,ptr) != 0){
-		if(dog.nombre[0] != '*'){
-			int posicion = ftell(ptr)- sizeof(struct dogType);
-			ht_insert(ht, dog.nombre , posicion);
-		}
-	}
-	r = fclose(ptr);
-	if(r < 0){
-		perror("Error fclose");
-		exit(-1);
-	}
-	return ht; 
-}
+HashTable* guardarRegistro(HashTable* table, void *puntero);
 
-
+struct HashTable* hash_db();
 //FIN HASH
+int borrarRegistro(int posicion);
 
+HashTable* delete_item(HashTable* table, char* key, int code);
 
-int borrarRegistro(int posicion){
-	FILE* archivo;
-	struct dogType dog;
-	int r, i;
-	archivo = fopen("dataDogs.dat", "r+b");
-	if(archivo == NULL){
-		perror("Error fopen");
-				exit(-1);
-	}
-	r = fseek(archivo,posicion,SEEK_SET);
-	if(r < 0){
-		perror("Error fseek");
-		exit(-1);
-	}
+struct dogType leerEsctructura(int id, struct dogType dog);
 
-	r = fread(&dog, sizeof(struct dogType), 1 ,archivo);
-	if(r = 0){
-		perror("Error fread");
-		exit(-1);
-	}
-	
-	for(i = 0; dog.nombre[i]; i++)
-		dog.nombre[i] = ' ';
-	dog.nombre[0] = '*';
-	dog.edad = 0;
-	dog.estatura = 0;
-	dog.peso = 0;
-	dog.sexo = ' ';
-	for(i = 0; dog.tipo[i]; i++)
-		dog.tipo[i] = ' ';
-	for(i = 0; dog.raza[i]; i++)
-		dog.raza[i] = ' ';
-		
-	r = fseek(archivo, posicion, SEEK_SET);
-	if(r != 0){
-		perror("Error fseek");
-		exit(-1);
-	}
-	r = fwrite(&dog, sizeof(struct dogType), 1, archivo);
-	if(r = 0){
-		perror("Error fwrite");
-		exit(-1);
-	}
-	r = fclose(archivo);
-	if(r < 0){
-		perror("Error fclose");
-		exit(-1);
-	}
-	return 0;
-}
-
-HashTable* delete_item(HashTable* table, char* key, int code) {
-	registros--;
-    Ht_item* val = ht_search(table, key);
-    if (val == NULL) {
-        printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", key);
-        return NULL;
-    }
-    else {
-		FILE* archivo;
-		struct dogType mascota, eliminar;
-		int current = val->head, r;
-		
-		archivo = fopen("dataDogs.dat", "rb+");
-		if(archivo == NULL){
-			perror("Error fopen");
-			exit(-1);
-		}
-		r = fseek(archivo, val->head, SEEK_SET);
-		if(r != 0){
-			perror("Error fseek");
-			exit(-1);
-		}
-		r = fread(&mascota, sizeof(struct dogType), 1, archivo);
-		if(r = 0){
-			perror("Error fread");
-			exit(-1);
-		}
-		if(code == current){
-			val->head = mascota.next;
-			return table;
-		}
-		while(mascota.next != -1){
-			if(mascota.next == code){
-				r = fseek(archivo, mascota.next, SEEK_SET);
-				if(r != 0){
-					perror("Error fseek");
-					exit(-1);
-				}
-				r = fread(&eliminar, sizeof(struct dogType), 1, archivo);
-				if(r = 0){
-					perror("Error fread");
-					exit(-1);
-				}
-				int sig = eliminar.next;
-				mascota.next = sig;
-				r = fseek(archivo, current, SEEK_SET);
-				if(r != 0){
-					perror("Error fseek");
-					exit(-1);
-				}
-				r = fwrite(&mascota, sizeof(struct dogType), 1, archivo);
-				if(r = 0){
-					perror("Error fwrite");
-					exit(-1);
-				}
-				fclose(archivo);
-				return table;
-			}
-			if(mascota.next == val->tail){
-				r = fread(&mascota, sizeof(struct dogType), 1, archivo);
-				if(r = 0){
-					perror("Error fread");
-					exit(-1);
-				}
-				mascota.next = -1;
-				r = fseek(archivo, current, SEEK_SET);
-				if(r != 0){
-					perror("Error fseek");
-					exit(-1);
-				}
-				r = fwrite(&mascota, sizeof(struct dogType), 1, archivo);
-				if(r = 0){
-					perror("Error fwrite");
-					exit(-1);
-				}
-				val->tail = current;
-				fclose(archivo);
-				return table;
-			}
-			r = fseek(archivo, mascota.next, SEEK_SET);
-			if(r != 0){
-				perror("Error fseek");
-				exit(-1);
-			}
-			current = ftell(archivo);
-			r = fread(&mascota, sizeof(struct dogType), 1, archivo);
-			if(r = 0){
-				perror("Error fread");
-				exit(-1);
-			}
-		}
-		printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", key);
-		r = fclose(archivo);
-		if(r < 0){
-			perror("Error fclose");
-			exit(-1);
-		}
-    }
-}
-
-struct dogType leerEsctructura(int id, struct dogType dog){
-	int r;
-	FILE *ptr;
-	ptr = fopen("dataDogs.dat", "rb");
-	if (ptr == NULL){
-		perror("error fopen");
-		exit(-1);
-   	}
-	r = fseek(ptr, id, SEEK_SET);
-	if(r != 0){
-		perror("Error fseek");
-		exit(-1);
-	}
-	r = fread(&dog, sizeof(struct dogType), 1, ptr);
-	if(r = 0){
-		perror("Error fread");
-		exit(-1);
-	}
-	r = fclose(ptr);
-	if(r < 0){
-		perror("Error fclose");
-		exit(-1);
-	}
-	return dog;
-}
-
+//NUMERO REGISTROS
+int registros=0;
 
 int main(){
 
     FILE *ptr;
     HashTable* ht = create_table(CAPACITY);
     ht = hash_db();
-    int serverfd, clientfd, r, opt = 1, tope = 100000000, acc = 0, i, peticion, cero = 0,id;
+
+    int r, opt = 1, tope = 100000000, acc = 0, i, peticion, cero = 0,id;
+
     char *vector, *vector2, *key;
     vector = (char *)malloc(tope * sizeof(char));
     vector2 = (char *)malloc(tope * sizeof(char));
-    struct sockaddr_in server, client;
-    socklen_t tamano;
-    char opcion[1], idS[10], nombre[32], historia[1];
+
+	char opcion[1], idS[10], nombre[32], historia[1];
     struct dogType *mascota, m2, m3;
 
-    mascota = malloc(sizeof(struct dogType));
+	mascota = malloc(sizeof(struct dogType));
 	if (mascota == NULL)
 	{
 		perror("Error malloc");
 		exit(-1);
 	}
 
+	//Log
     char bufff[BUF_LEN] = {0};
     time_t rawtime = time(NULL);
     struct tm *ptm = localtime(&rawtime);
     strftime(bufff, BUF_LEN, "%d/%m/%YT%X", ptm);
     
-
     FILE *f;
     f = fopen("serverDogs.log", "a+");
     if (f == NULL) {
 		perror("Error fopen");
 		exit(-1);
 	}
-        
+
+
+	//Sockets
+	int serverfd, clientfd;
+    struct sockaddr_in server, client;
+    socklen_t tamano;
+
     serverfd = socket(AF_INET, SOCK_STREAM, 0);
     if(serverfd < 0){
         perror("\n-->Error en socket():");
@@ -478,7 +140,10 @@ int main(){
         perror("\n-->Error en Listen(): ");
         exit(-1);
     }
-    
+    //TODO OK
+
+
+	//Cambio a threads
     clientfd = accept(serverfd, (struct sockaddr *)&client, &tamano);
     if(clientfd < 0)
     {
@@ -486,12 +151,15 @@ int main(){
         exit(-1);
     }
 
+
+	//ip in log - can be moved to thread
     struct sockaddr_in addr;
     socklen_t addr_size = sizeof(struct sockaddr_in);
     int res = getpeername(clientfd, (struct sockaddr *)&addr, &addr_size);
     char *clientip = (char *)malloc(20 * sizeof(char));
     strcpy(clientip, inet_ntoa(addr.sin_addr));
 
+	//move to thread function
 	do{
 		
 		r = recv(clientfd, opcion, sizeof(char), 0);
@@ -740,3 +408,364 @@ int guardarHistoria(char nombre[], char id[], int clientfd)
 
 	return 0;
 }
+//HASH
+unsigned long hash_function(char *str)
+{
+	unsigned long i = 0;
+	int j;
+	for (j = 0; str[j]; j++)
+		i += str[j];
+	return i % CAPACITY;
+}
+
+Ht_item* create_item(int key, int value) {
+    // Creates a pointer to a new hash table item
+    Ht_item* item = (Ht_item*) malloc (sizeof(Ht_item));
+    item->head = key;
+    item->tail = value;
+    return item;
+}
+ 
+HashTable* create_table(int size) {
+    // Creates a new HashTable
+    int i;
+    HashTable* table = (HashTable*) malloc (sizeof(HashTable));
+    table->size = size;
+    table->count = 0;
+    table->items = (Ht_item**) calloc (table->size, sizeof(Ht_item*));
+    for (i = 0; i < table->size; i++)
+        table->items[i] = NULL;
+    return table;
+}
+ 
+void free_item(Ht_item* item) {
+    // Frees an item
+    free(&item->head);
+    free(&item->tail);
+    free(item);
+}
+ 
+void free_table(HashTable* table) {
+    // Frees the table
+    int i;
+    for (i = 0; i < table->size; i++) {
+        Ht_item* item = table->items[i];
+        if (item != NULL)
+            free_item(item);
+    }
+    free(table->items);
+    free(table);
+}
+
+void print_table(HashTable* table) {
+	int i;
+    printf("\nHash Table\n-------------------\n");
+    for (i = 0; i < table->size; i++)
+        if (table->items[i])
+            printf("Index:%d, Key:%d, Value:%d\n", i, table->items[i]->head, table->items[i]->tail);
+    printf("-------------------\n\n");
+}
+
+HashTable* ht_insert(HashTable* table,char* key, int value) {
+    registros++;
+    unsigned long index = hash_function(key);
+    Ht_item* current_item = table->items[index];
+    if (current_item == NULL) {
+        // Key does not exist.
+        if (table->count == table->size) {
+            // Hash Table Full
+            printf("Insert Error: Hash Table is full\n");
+            return NULL;
+        }
+        // Insert directly
+        Ht_item* item = create_item(value, value);
+        table->items[index] = item; 
+		//print_table(table);
+        table->count++;
+		return table;
+    }else {
+        // Scenario 1: We only need to update value
+        int posicion = current_item->tail, r;
+	    FILE* archivo;
+	    archivo = fopen("dataDogs.dat", "rb+");
+	    if (archivo == NULL){
+		perror("error fopen");
+		exit(-1);
+   	}
+	    struct dogType mascota;
+	    r = fseek(archivo, posicion, SEEK_SET);
+	    if(r != 0){
+			perror("Error fseek");
+			exit(-1);
+		}
+	    r = fread(&mascota, sizeof(struct dogType), 1, archivo);
+	    if(r = 0){
+			perror("Error fread");
+			exit(-1);
+		}
+        mascota.next = value;
+	    current_item->tail = value;
+	    r = fseek(archivo, posicion, SEEK_SET);
+	    if(r != 0){
+			perror("Error fseek");
+			exit(-1);
+		}
+	    r = fwrite(&mascota, sizeof(struct dogType), 1, archivo);
+	    if(r = 0){
+			perror("Error fwrite");
+			exit(-1);
+		}
+ 	    r = fclose(archivo);
+ 	    if(r < 0){
+			perror("Error fclose");
+			exit(-1);
+		}
+	    return table;
+    }
+}
+
+Ht_item* ht_search(HashTable* table, char* key) {
+    // Searches the key in the hashtable
+    // and returns NULL if it doesn't exist
+    int index = hash_function(key);
+    Ht_item* item = table->items[index];
+    // Ensure that we move to a non NULL item
+    if (item != NULL)
+        return item;
+    return NULL;
+}
+
+HashTable* guardarRegistro(HashTable* table, void *puntero){
+	FILE* archivo;
+	struct dogType* mascota;
+	mascota = puntero;
+	int r;
+	
+	archivo = fopen("dataDogs.dat", "ab+");
+	if(archivo == NULL){
+		perror("Error fopen");
+		exit(-1);
+	}
+	r = fseek(archivo, 0, SEEK_END);
+	if(r != 0){
+		perror("Error fseek");
+		exit(-1);
+	}
+	r = fwrite(puntero, sizeof(struct dogType), 1, archivo);
+	if(r = 0){
+		perror("Error fwrite");
+		exit(-1);
+	}
+	int posicion = ftell(archivo)- sizeof(struct dogType);
+	table = ht_insert(table, mascota->nombre, posicion);
+	r = fclose(archivo);
+	if(r < 0){
+		perror("Error fclose");
+		exit(-1);
+	}
+	return table;
+}
+
+struct HashTable* hash_db(){
+	FILE *ptr;
+	HashTable* ht = create_table(CAPACITY);
+	struct dogType dog; 
+	int r;
+	
+    ptr = fopen("dataDogs.dat","rb");
+	if (ptr == NULL){
+		perror("error fopen");
+		return NULL;
+   	}
+	while (fread(&dog, sizeof(struct dogType), 1 ,ptr) != 0){
+		if(dog.nombre[0] != '*'){
+			int posicion = ftell(ptr)- sizeof(struct dogType);
+			ht_insert(ht, dog.nombre , posicion);
+		}
+	}
+	r = fclose(ptr);
+	if(r < 0){
+		perror("Error fclose");
+		exit(-1);
+	}
+	return ht; 
+}
+//FIN HASH
+
+int borrarRegistro(int posicion){
+	FILE* archivo;
+	struct dogType dog;
+	int r, i;
+	archivo = fopen("dataDogs.dat", "r+b");
+	if(archivo == NULL){
+		perror("Error fopen");
+				exit(-1);
+	}
+	r = fseek(archivo,posicion,SEEK_SET);
+	if(r < 0){
+		perror("Error fseek");
+		exit(-1);
+	}
+
+	r = fread(&dog, sizeof(struct dogType), 1 ,archivo);
+	if(r = 0){
+		perror("Error fread");
+		exit(-1);
+	}
+	
+	for(i = 0; dog.nombre[i]; i++)
+		dog.nombre[i] = ' ';
+	dog.nombre[0] = '*';
+	dog.edad = 0;
+	dog.estatura = 0;
+	dog.peso = 0;
+	dog.sexo = ' ';
+	for(i = 0; dog.tipo[i]; i++)
+		dog.tipo[i] = ' ';
+	for(i = 0; dog.raza[i]; i++)
+		dog.raza[i] = ' ';
+		
+	r = fseek(archivo, posicion, SEEK_SET);
+	if(r != 0){
+		perror("Error fseek");
+		exit(-1);
+	}
+	r = fwrite(&dog, sizeof(struct dogType), 1, archivo);
+	if(r = 0){
+		perror("Error fwrite");
+		exit(-1);
+	}
+	r = fclose(archivo);
+	if(r < 0){
+		perror("Error fclose");
+		exit(-1);
+	}
+	return 0;
+}
+
+HashTable* delete_item(HashTable* table, char* key, int code) {
+	registros--;
+    Ht_item* val = ht_search(table, key);
+    if (val == NULL) {
+        printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", key);
+        return NULL;
+    }
+    else {
+		FILE* archivo;
+		struct dogType mascota, eliminar;
+		int current = val->head, r;
+		
+		archivo = fopen("dataDogs.dat", "rb+");
+		if(archivo == NULL){
+			perror("Error fopen");
+			exit(-1);
+		}
+		r = fseek(archivo, val->head, SEEK_SET);
+		if(r != 0){
+			perror("Error fseek");
+			exit(-1);
+		}
+		r = fread(&mascota, sizeof(struct dogType), 1, archivo);
+		if(r = 0){
+			perror("Error fread");
+			exit(-1);
+		}
+		if(code == current){
+			val->head = mascota.next;
+			return table;
+		}
+		while(mascota.next != -1){
+			if(mascota.next == code){
+				r = fseek(archivo, mascota.next, SEEK_SET);
+				if(r != 0){
+					perror("Error fseek");
+					exit(-1);
+				}
+				r = fread(&eliminar, sizeof(struct dogType), 1, archivo);
+				if(r = 0){
+					perror("Error fread");
+					exit(-1);
+				}
+				int sig = eliminar.next;
+				mascota.next = sig;
+				r = fseek(archivo, current, SEEK_SET);
+				if(r != 0){
+					perror("Error fseek");
+					exit(-1);
+				}
+				r = fwrite(&mascota, sizeof(struct dogType), 1, archivo);
+				if(r = 0){
+					perror("Error fwrite");
+					exit(-1);
+				}
+				fclose(archivo);
+				return table;
+			}
+			if(mascota.next == val->tail){
+				r = fread(&mascota, sizeof(struct dogType), 1, archivo);
+				if(r = 0){
+					perror("Error fread");
+					exit(-1);
+				}
+				mascota.next = -1;
+				r = fseek(archivo, current, SEEK_SET);
+				if(r != 0){
+					perror("Error fseek");
+					exit(-1);
+				}
+				r = fwrite(&mascota, sizeof(struct dogType), 1, archivo);
+				if(r = 0){
+					perror("Error fwrite");
+					exit(-1);
+				}
+				val->tail = current;
+				fclose(archivo);
+				return table;
+			}
+			r = fseek(archivo, mascota.next, SEEK_SET);
+			if(r != 0){
+				perror("Error fseek");
+				exit(-1);
+			}
+			current = ftell(archivo);
+			r = fread(&mascota, sizeof(struct dogType), 1, archivo);
+			if(r = 0){
+				perror("Error fread");
+				exit(-1);
+			}
+		}
+		printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", key);
+		r = fclose(archivo);
+		if(r < 0){
+			perror("Error fclose");
+			exit(-1);
+		}
+    }
+}
+
+struct dogType leerEsctructura(int id, struct dogType dog){
+	int r;
+	FILE *ptr;
+	ptr = fopen("dataDogs.dat", "rb");
+	if (ptr == NULL){
+		perror("error fopen");
+		exit(-1);
+   	}
+	r = fseek(ptr, id, SEEK_SET);
+	if(r != 0){
+		perror("Error fseek");
+		exit(-1);
+	}
+	r = fread(&dog, sizeof(struct dogType), 1, ptr);
+	if(r = 0){
+		perror("Error fread");
+		exit(-1);
+	}
+	r = fclose(ptr);
+	if(r < 0){
+		perror("Error fclose");
+		exit(-1);
+	}
+	return dog;
+}
+
