@@ -100,6 +100,7 @@ int main()
 	HashTable *ht = create_table(CAPACITY);
 	ht = hash_db();
 
+	printf("Server ready to connect \n");
 	//Moved to thread
 	/*
 	int r, opt = 1, tope = 100000000, acc = 0, i, peticion, cero = 0, id;
@@ -718,6 +719,7 @@ HashTable *guardarRegistro(HashTable *table, void *puntero)
 
 struct HashTable *hash_db()
 {
+	
 	FILE *ptr;
 	HashTable *ht = create_table(CAPACITY);
 	struct dogType dog;
