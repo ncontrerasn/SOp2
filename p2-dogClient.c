@@ -128,6 +128,10 @@ int main(int argc, char **argv)
 				perror("\n-->Error en send(): ");
 				exit(-1);
 			}
+			if(id%100 !=0){
+				printf("          ID invalido.\n");
+				break;
+			}
 
 			r = recv(clientfd, &dog, sizeof(struct dogType), 0);
 			if (r < 0)

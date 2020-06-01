@@ -104,14 +104,11 @@ int main()
 	//Moved to thread
 	/*
 	int r, opt = 1, tope = 100000000, acc = 0, i, peticion, cero = 0, id;
-
 	char *vector, *vector2, *key;
 	vector = (char *)malloc(tope * sizeof(char));
 	vector2 = (char *)malloc(tope * sizeof(char));
-
 	char opcion[1], idS[10], nombre[32], historia[1];
 	struct dogType *mascota, m2, m3;
-
 	mascota = malloc(sizeof(struct dogType));
 	if (mascota == NULL)
 	{
@@ -128,13 +125,6 @@ int main()
 	struct tm *ptm = localtime(&rawtime);
 	strftime(bufff, BUF_LEN, "%d/%m/%YT%X", ptm);*/
 
-	FILE *f;
-	f = fopen("serverDogs.log", "a+");
-	if (f == NULL)
-	{
-		perror("Error fopen");
-		exit(-1);
-	}
 
 	//Sockets
 	int serverfd, clientfd;
@@ -182,7 +172,7 @@ int main()
 		clientfd = accept(serverfd, (struct sockaddr *)&client, &tamano);
 		arg->ht =ht;
 		arg->socket = clientfd;
-		arg->f = f;
+		
 
 		if (pthread_create(&tid[connections], NULL, socketThread, (void * )arg) != 0)
 		{
@@ -192,12 +182,10 @@ int main()
 
 	//ip in log - moved to thread
 	/*
-
 	*/
 
 	// ALL MAIN moved to thread function
 	/*
-
 	*/
 	return 0;
 }
@@ -222,7 +210,15 @@ void *socketThread(void *arg)
 	//Arguments
 	HashTable *ht = ((struct arguments*)arg)->ht;
 	int clientfd = ((struct arguments*)arg)->socket;
-	FILE *f = ((struct arguments*)arg)->f;
+	FILE *f;
+	f = fopen("serverDogs.log", "a");
+	
+	if (f == NULL)
+	{
+		perror("Error fopen");
+		exit(-1);
+	}
+
 
 	//Ip log
 	struct sockaddr_in addr;
@@ -262,6 +258,10 @@ void *socketThread(void *arg)
 				exit(-1);
 			}
 
+			//char str[] = "Lo logre jueputa :D";
+			//fseek(f,0,SEEK_END);
+			//fwrite(str, 1, sizeof(str),f);
+			
 			r=fprintf(f, "[Fecha %s] [Cliente %s] [Inserción] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, 				sexo: %c]\n", bufff, clientip, mascota->nombre, mascota->tipo, mascota->edad, mascota->raza, mascota->estatura, 			mascota->peso, mascota->sexo);
 			if (r = 0)
 			{
@@ -314,7 +314,7 @@ void *socketThread(void *arg)
 
 				guardarHistoria((char *)dog.nombre, idS, clientfd);
 			}
-			r=fprintf(f, "[Fecha %s] [Cliente %s] [Lectura] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, sexo: %c]\n", bufff, clientip, m2.nombre, m2.tipo, m2.edad, m2.raza, m2.estatura, m2.peso, m2.sexo);
+			r=fprintf(f, "[Fecha %s] [Cliente %s] [Lectura] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, sexo: %c]\n", bufff, clientip, dog.nombre, dog.tipo, dog.edad, dog.raza, dog.estatura, dog.peso, dog.sexo);
 			
 			if (r = 0)
 			{
@@ -324,7 +324,6 @@ void *socketThread(void *arg)
 			break;
 
 		case '3':
-			//printf("numero registros %d\n", registros); 
 			r = send(clientfd, &registros, sizeof(int), 0);
 			if (r < 0)
 			{
@@ -345,7 +344,7 @@ void *socketThread(void *arg)
 				ht = delete_item(ht, (char *)dog.nombre, id);
 				borrarRegistro(id);
 				r = send(clientfd, "o", sizeof(char), 0);
-
+				r=fprintf(f, "[Fecha %s] [Cliente %s] [Borrado] [Mascota con id: %d]\n", bufff, clientip,id);
 				break;
 			}
 			else
@@ -357,7 +356,7 @@ void *socketThread(void *arg)
 					exit(-1);
 				}
 			}
-			r=fprintf(f, "[Fecha %s] [Cliente %s] [Borrado] [Nombre: %s, tipo: %s, edad: %d, raza: %s, estatura: %d, peso: %f, sexo: %c]\n", bufff, clientip, m2.nombre, m2.tipo, m2.edad, m2.raza, m2.estatura, m2.peso, m2.sexo);
+			
 			if (r = 0)
 			{
 				perror("\n-->Error en fprintf: ");
@@ -456,6 +455,7 @@ void *socketThread(void *arg)
 			break;
 
 		case '5':
+			fclose(f);
 			break;
 		}
 
