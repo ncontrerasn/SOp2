@@ -256,23 +256,28 @@ int main(int argc, char **argv)
 			int pos;
 			//recibir todas las mascotas de la busqueda
 			r = recv(clientfd, &consulta, sizeof(char), 0);
-			if(consulta == 'n')
-				r = 0;
-
-			while(1){
-				recv(clientfd, &pos, sizeof(int), 0);
-				r = recv(clientfd, mascota, sizeof(struct dogType), 0);
-				if(r < 0){
-					perror("\n-->Error en recv(): ");
-					exit(-1);
+			if(consulta == 'n'){
+				printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", nombre);
+				
+			}else{
+				int i=0;
+				while(1){
+					recv(clientfd, &pos, sizeof(int), 0);
+					r = recv(clientfd, mascota, sizeof(struct dogType), 0);
+					if(r < 0){
+						perror("\n-->Error en recv(): ");
+						exit(-1);
+					}
+					if(pos == -1 ){
+						if(i==0){
+							printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", nombre);
+						}
+						break;
+					}
+					printf("\n          ID: %d\n", pos);
+					verMascota(*mascota);
+					i++;
 				}
-				if(pos == -1 ){
-					break;
-				}
-				printf("\n          ID: %d\n", pos);
-				verMascota(*mascota);
-
-
 			}
 
 	
