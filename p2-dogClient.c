@@ -203,7 +203,6 @@ int main(int argc, char **argv)
 			printf("\n          ID de la mascota que deseas borrar: ");
 			scanf("%i", &id);
 						
-			//sprintf(idS, "%i", id);
 			r = send(clientfd, &id, sizeof(int) , 0);
 			if (r < 0)
 			{
@@ -254,7 +253,6 @@ int main(int argc, char **argv)
 			
 			int acc;
 			int pos;
-			//recibir todas las mascotas de la busqueda
 			r = recv(clientfd, &consulta, sizeof(char), 0);
 			if(consulta == 'n'){
 				printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", nombre);
@@ -379,8 +377,8 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 {
 
 	FILE *historia;
-	char buff[100], archivo[500], dir[500] = "gedit ", borrar[500] = "rm ";
-	int r;
+	char buff[500], archivo[500], dir[500] = "gedit ", borrar[500] = "rm ", ch;
+	int r, cont = 0;
 
 	strcpy(archivo, id);
 	strcat(archivo, "_");
@@ -394,20 +392,23 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 		exit(-1);
 	}
 	r = recv(clientfd,buff,sizeof(buff), 0);
-	size_t ln = strlen(buff)-1;
-		if (buff[ln] == '\n')
-			buff[ln] = '\0';
+
 	if(r < 0){
 		perror("\n-->Error en recv(): ");
 		exit(-1);
 	}
 
 	if(buff[0]==' ') 
-		printf("BLANCO");
+		printf(" ");
 	else
 		fprintf(historia, "%s", buff);
 
-	fclose(historia);
+	r = fclose(historia);
+	if (r < 0)
+	{
+		perror("Error fclose");
+		exit(-1);
+	}
 
 	strcat(dir, id);
 	strcat(dir, "_");
@@ -415,21 +416,36 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 	strcat(dir, ".txt");
 
 	system(dir);
-	//lo de abajo es prueba gay
+
 	historia = fopen(archivo, "r");
-	fread(buff,100,1,historia);
-	ln = strlen(buff)-1;
-	if (buff[ln] == '\n')
-		buff[ln] = '\0';
-    r = send(clientfd,buff,sizeof(buff), 0);
-	//printf("r %d",r);
-	//printf("BUFF %s",buff);
+	if (historia == NULL)
+	{
+		perror("error fopen ");
+		exit(-1);
+	}
+	while ((ch = fgetc(historia)) != EOF)
+        {
+            buff[cont] = ch;
+            cont++;
+        }
+
+    char buffS[cont-2];
+    for (int i = 0; i < cont-1; i++)
+        buffS[i]=buff[i];
+
+    r = send(clientfd,buffS,sizeof(buffS) + 1, 0);
+	if (r < 0)
+		{
+			perror("\n-->Error en send(): ");
+			exit(-1);
+		}
+
 	strcat(borrar, id);
 	strcat(borrar, "_");
 	strcat(borrar, nombre);
 	strcat(borrar, ".txt");
 	system(borrar);
-	//fin prueba
+
 	return 0;
 }
 
