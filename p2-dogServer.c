@@ -11,26 +11,25 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <signal.h>
+#include<signal.h> 
 
 #define PORT 3543
 #define BACKLOG 2
 #define BUF_LEN 256
 #define CAPACITY 1800
-#define CCLIENTS 32
+
 
 int clientfd;
 int serverfd;
-int openclients;
 
-void handle_sigint(int sig)
-{
-	close(clientfd);
-	close(serverfd);
-	openclients--;
-	printf("\nPrograma terminado\n");
-	exit(-1);
-}
+void handle_sigint(int sig) 
+{ 
+    close(clientfd);
+    close(serverfd);
+    printf("Programa terminado\n"); 
+    exit(-1);
+
+} 
 
 struct dogType
 {
@@ -103,23 +102,47 @@ struct arguments
 
 	HashTable *ht;
 	int socket;
-	int thid;
-
+	FILE *f;
 };
+
 
 int main()
 {
-	signal(SIGINT, handle_sigint);
+
+	signal(SIGINT, handle_sigint); 
 	struct arguments *arg = (struct arguments *)malloc(sizeof(struct arguments));
+
+	//FILE *ptr;
 
 	HashTable *ht = create_table(CAPACITY);
 	ht = hash_db();
 
-	printf("\n Server ready to connect \n");
-
+	printf("Server ready to connect \n");
+	//Moved to thread
+	/*
+	int r, opt = 1, tope = 100000000, acc = 0, i, peticion, cero = 0, id;
+	char *vector, *vector2, *key;
+	vector = (char *)malloc(tope * sizeof(char));
+	vector2 = (char *)malloc(tope * sizeof(char));
+	char opcion[1], idS[10], nombre[32], historia[1];
+	struct dogType *mascota, m2, m3;
+	mascota = malloc(sizeof(struct dogType));
+	if (mascota == NULL)
+	{
+		perror("Error malloc");
+		exit(-1);
+	}*/
+	//Added
 	int r, opt = 1;
 
+	//Log - moved to thread
+	/*char bufff[BUF_LEN] = {0};
+	time_t rawtime = time(NULL);
+	struct tm *ptm = localtime(&rawtime);
+	strftime(bufff, BUF_LEN, "%d/%m/%YT%X", ptm);*/
+
 	//Sockets
+	//int serverfd, clientfd;
 	struct sockaddr_in server, client;
 	socklen_t tamano;
 
@@ -155,32 +178,18 @@ int main()
 	//Cambio a threads
 
 	//Threads
-	pthread_t tid[1000];
+	pthread_t tid[60]; //max connections
 	int connections = 0;
-	openclients=0;
-	int fllimit=0;
+
 	while (1)
 	{
-		if (openclients < CCLIENTS)
+		clientfd = accept(serverfd, (struct sockaddr *)&client, &tamano);
+		arg->ht = ht;
+		arg->socket = clientfd;
+
+		if (pthread_create(&tid[connections], NULL, socketThread, (void *)arg) != 0)
 		{
-			openclients++;
-			fllimit=1;
-			clientfd = accept(serverfd, (struct sockaddr *)&client, &tamano);
-			arg->ht = ht;
-			arg->socket = clientfd;
-			arg->thid = openclients;
-			if (pthread_create(&tid[connections++], NULL, socketThread, (void *)arg) != 0)
-			{
-				perror("Failed to create thread\n");
-			}
-			
-		}else{
-			
-			if(fllimit==1){
-				//printf("Limit reached\n");
-				fllimit=0;
-			}
-			
+			perror("Failed to create thread\n");
 		}
 	}
 
@@ -214,8 +223,6 @@ void *socketThread(void *arg)
 	//Arguments
 	HashTable *ht = ((struct arguments *)arg)->ht;
 	int clientfd = ((struct arguments *)arg)->socket;
-	int thid = ((struct arguments *)arg)->thid;
-	//printf("Thread id: %i\n",thid);
 	FILE *f;
 	f = fopen("serverDogs.log", "a");
 
@@ -231,7 +238,7 @@ void *socketThread(void *arg)
 	int res = getpeername(clientfd, (struct sockaddr *)&addr, &addr_size);
 	char *clientip = (char *)malloc(20 * sizeof(char));
 	strcpy(clientip, inet_ntoa(addr.sin_addr));
-	//printf("Client IP: %s\n", clientip);
+	printf("Client IP: %s\n", clientip);
 	//
 
 	//LOG
@@ -239,8 +246,7 @@ void *socketThread(void *arg)
 	time_t rawtime = time(NULL);
 	struct tm *ptm = localtime(&rawtime);
 	strftime(bufff, BUF_LEN, "%d/%m/%YT%X", ptm);
-	
-	send(clientfd, "x", sizeof(char), 0);
+
 	do
 	{
 		r = recv(clientfd, opcion, sizeof(char), 0);
@@ -442,9 +448,12 @@ void *socketThread(void *arg)
 			struct dogType ultimo;
 			ultimo.nombre[0] = '*';
 			int x = -1;
+			
 			r = send(clientfd, &x, sizeof(int), 0);
 			r = send(clientfd, &ultimo, sizeof(struct dogType), 0);
-			r = fprintf(f, "[Fecha %s] [Cliente %s] [Bùsqueda] [Cadena buscada: %s]\n", bufff, clientip, nombre);
+			
+			printf("termine aqui\n");
+			fprintf(f, "[Fecha %s] [Cliente %s] [Bùsqueda] [Cadena buscada: %s]\n", bufff, clientip, nombre);
 			if (r = 0)
 			{
 				perror("\n-->Error en fprintf: ");
@@ -458,8 +467,7 @@ void *socketThread(void *arg)
 		}
 
 	} while (opcion[0] != '5');
-	openclients--;
-	//printf("\nExit client \n");
+	printf("\nExit client \n");
 	close(clientfd);
 	pthread_exit(NULL);
 }
@@ -741,6 +749,7 @@ struct HashTable *hash_db()
 		{
 			int posicion = ftell(ptr) - sizeof(struct dogType);
 			ht_insert(ht, dog.nombre, posicion);
+			
 		}
 	}
 	r = fclose(ptr);

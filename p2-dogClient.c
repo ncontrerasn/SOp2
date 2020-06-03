@@ -86,8 +86,6 @@ int main(int argc, char **argv)
 		perror("Error malloc");
 		exit(-1);
 	}
-	char check[1];
-	recv(clientfd, check, sizeof(char), 0);
 
 	do
 	{
@@ -283,11 +281,12 @@ int main(int argc, char **argv)
 						perror("\n-->Error en recv(): ");
 						exit(-1);
 					}
-					if(pos == -1 ){
+					if(pos == -1 || r==0 ){
 						if(i==0){
 							printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", nombre);
 						}
 						break;
+
 					}
 					printf("\n          ID: %d\n", pos);
 					verMascota(*mascota);
