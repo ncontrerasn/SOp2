@@ -86,6 +86,8 @@ int main(int argc, char **argv)
 		perror("Error malloc");
 		exit(-1);
 	}
+	char check[1];
+	recv(clientfd, check, sizeof(char), 0);
 
 	do
 	{
