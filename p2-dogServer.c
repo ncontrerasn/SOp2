@@ -11,11 +11,25 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <pthread.h>
+#include<signal.h> 
 
 #define PORT 3543
 #define BACKLOG 2
 #define BUF_LEN 256
 #define CAPACITY 1800
+
+
+int clientfd;
+int serverfd;
+
+void handle_sigint(int sig) 
+{ 
+    close(clientfd);
+    close(serverfd);
+    printf("Programa terminado\n"); 
+    exit(-1);
+
+} 
 
 struct dogType
 {
@@ -91,9 +105,11 @@ struct arguments
 	FILE *f;
 };
 
+
 int main()
 {
 
+	signal(SIGINT, handle_sigint); 
 	struct arguments *arg = (struct arguments *)malloc(sizeof(struct arguments));
 
 	//FILE *ptr;
@@ -126,7 +142,7 @@ int main()
 	strftime(bufff, BUF_LEN, "%d/%m/%YT%X", ptm);*/
 
 	//Sockets
-	int serverfd, clientfd;
+	//int serverfd, clientfd;
 	struct sockaddr_in server, client;
 	socklen_t tamano;
 
@@ -730,9 +746,7 @@ struct HashTable *hash_db()
 		{
 			int posicion = ftell(ptr) - sizeof(struct dogType);
 			ht_insert(ht, dog.nombre, posicion);
-			//registros++;
-			//i++;
-			//printf("numero registros : %d\n", registros);
+			
 		}
 	}
 	r = fclose(ptr);

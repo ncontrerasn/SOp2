@@ -11,8 +11,23 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include<signal.h> 
 
 #define PORT 3543
+
+
+int clientfd;
+int serverfd;
+
+void handle_sigint(int sig) 
+{ 
+    close(clientfd);
+    close(serverfd);
+    printf("Programa terminado\n"); 
+    exit(-1);
+
+} 
+
 
 struct dogType
 {
@@ -38,10 +53,11 @@ int mostrarHistoria(char nombre[], char id[], int clientfd);
 
 int main(int argc, char **argv)
 {
+	signal(SIGINT, handle_sigint); 
 	int opcion, validacion, id, i, h2, buffsize = 10000,numRegistros;
 	struct dogType *mascota, dog;
 	char nombre[32], historia, charId[12], idS[10], respuesta[1], contenidoHistoria[50], consulta;
-	int clientfd, serverfd, r, tope, acc, opt = 1;
+	int r, tope, acc, opt = 1;
 	struct sockaddr_in client;
 	struct hostent *he;
 
