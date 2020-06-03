@@ -22,7 +22,6 @@ int serverfd;
 void handle_sigint(int sig) 
 { 
     close(clientfd);
-    close(serverfd);
     printf("Programa terminado\n"); 
     exit(-1);
 
