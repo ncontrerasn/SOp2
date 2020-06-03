@@ -28,7 +28,7 @@ void handle_sigint(int sig)
 	close(clientfd);
 	close(serverfd);
 	openclients--;
-	printf("Programa terminado\n");
+	printf("\nPrograma terminado\n");
 	exit(-1);
 }
 
@@ -115,7 +115,7 @@ int main()
 	HashTable *ht = create_table(CAPACITY);
 	ht = hash_db();
 
-	printf("Server ready to connect \n");
+	printf("\n Server ready to connect \n");
 
 	int r, opt = 1;
 
@@ -177,7 +177,7 @@ int main()
 		}else{
 			
 			if(fllimit==1){
-				printf("Limit reached\n");
+				//printf("Limit reached\n");
 				fllimit=0;
 			}
 			
@@ -215,7 +215,7 @@ void *socketThread(void *arg)
 	HashTable *ht = ((struct arguments *)arg)->ht;
 	int clientfd = ((struct arguments *)arg)->socket;
 	int thid = ((struct arguments *)arg)->thid;
-	printf("Thread id: %i\n",thid);
+	//printf("Thread id: %i\n",thid);
 	FILE *f;
 	f = fopen("serverDogs.log", "a");
 
@@ -231,7 +231,7 @@ void *socketThread(void *arg)
 	int res = getpeername(clientfd, (struct sockaddr *)&addr, &addr_size);
 	char *clientip = (char *)malloc(20 * sizeof(char));
 	strcpy(clientip, inet_ntoa(addr.sin_addr));
-	printf("Client IP: %s\n", clientip);
+	//printf("Client IP: %s\n", clientip);
 	//
 
 	//LOG
@@ -459,7 +459,7 @@ void *socketThread(void *arg)
 
 	} while (opcion[0] != '5');
 	openclients--;
-	printf("\nExit client \n");
+	//printf("\nExit client \n");
 	close(clientfd);
 	pthread_exit(NULL);
 }
