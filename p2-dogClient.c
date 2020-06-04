@@ -11,22 +11,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
-#include<signal.h> 
 
-#define PORT 3535
-
-
-int clientfd;
-int serverfd;
-
-void handle_sigint(int sig) 
-{ 
-    close(clientfd);
-    printf("Programa terminado\n"); 
-    exit(-1);
-
-} 
-
+#define PORT 3543
 
 struct dogType
 {
@@ -52,11 +38,11 @@ int mostrarHistoria(char nombre[], char id[], int clientfd);
 
 int main(int argc, char **argv)
 {
-	signal(SIGINT, handle_sigint); 
-	int opcion, validacion, id, i, h2, buffsize = 10000,numRegistros;
+	int opcion, validacion, id, i, h2,numRegistros;
+	long long buffsize = 100000000;
 	struct dogType *mascota, dog;
 	char nombre[32], historia, charId[12], idS[10], respuesta[1], contenidoHistoria[50], consulta;
-	int r, tope, acc, opt = 1;
+	int clientfd, serverfd, r, tope, acc, opt = 1;
 	struct sockaddr_in client;
 	struct hostent *he;
 
@@ -265,7 +251,8 @@ int main(int argc, char **argv)
 				perror("\n-->Error en send(): ");
 				exit(-1);
 			}
-			
+			struct dogType *vectorR;
+			vectorR = (struct dogType *)malloc(80000 * sizeof(struct dogType));
 			int acc;
 			int pos;
 			r = recv(clientfd, &consulta, sizeof(char), 0);
@@ -273,25 +260,44 @@ int main(int argc, char **argv)
 				printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", nombre);
 				
 			}else{
-				int i=0;
+				int i=0, cont, acc=0,k;
+				r = recv(clientfd, &cont, sizeof(int), 0);
+				printf("conta %d", cont);
+				r = recv(clientfd, vectorR, sizeof(struct dogType)*cont, 0);
+				printf("r %d", r);
+				//acc+=r;
+				//while()
+				k=r/100;
+				//while (vectorR[i].nombre[0]!='*'){
+				while (i<cont){
+					printf("\n%d", i);
+					verMascota(vectorR[i]);
+					i++;
+					printf("%c", '\n');
+					if(i == cont) break;
+				}
+				printf("conta %d", cont);
+				//r = recv(clientfd, vectorR, sizeof(struct dogType)*80000, 0);
+				/*int i=0;
 				while(1){
 					recv(clientfd, &pos, sizeof(int), 0);
-					r=recv(clientfd, mascota, sizeof(struct dogType), 0);
-					if(r<0){
-						perror("error recieve");
+					r = recv(clientfd, mascota, sizeof(struct dogType), 0);
+					if(r < 0){
+						perror("\n-->Error en recv(): ");
+						exit(-1);
 					}
-					if(pos < 0 || r==0){
+					if(pos == -1 ){
 						if(i==0){
 							printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", nombre);
 						}
 						break;
-
 					}
 					printf("\n          ID: %d\n", pos);
 					verMascota(*mascota);
 					i++;
-				}
+				}*/
 			}
+			free(vectorR);
 
 			__fpurge(stdin);
 			printf("\n          Presiona cualquier tecla para regresar al menu.\n");

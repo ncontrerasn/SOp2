@@ -11,24 +11,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <pthread.h>
-#include<signal.h> 
 
-#define PORT 3535
+#define PORT 3543
 #define BACKLOG 2
 #define BUF_LEN 256
 #define CAPACITY 1800
 
-
-/*
-void handle_sigint(int sig) 
-{ 
-    close(clientfd);
-    close(serverfd[]);
-    printf("Programa terminado\n"); 
-    exit(-1);
-
-} 
-*/
 struct dogType
 {
 	char nombre[32];
@@ -103,11 +91,9 @@ struct arguments
 	FILE *f;
 };
 
-
 int main()
 {
 
-	//signal(SIGINT, handle_sigint); 
 	struct arguments *arg = (struct arguments *)malloc(sizeof(struct arguments));
 
 	//FILE *ptr;
@@ -115,7 +101,7 @@ int main()
 	HashTable *ht = create_table(CAPACITY);
 	ht = hash_db();
 
-	printf("Server ready to connect \n");
+	//printf("Server ready to connect \n");
 	//Moved to thread
 	/*
 	int r, opt = 1, tope = 100000000, acc = 0, i, peticion, cero = 0, id;
@@ -140,8 +126,7 @@ int main()
 	strftime(bufff, BUF_LEN, "%d/%m/%YT%X", ptm);*/
 
 	//Sockets
-	int serverfd;
-	int clientfd[100];
+	int serverfd, clientfd;
 	struct sockaddr_in server, client;
 	socklen_t tamano;
 
@@ -156,8 +141,8 @@ int main()
 	server.sin_port = htons(PORT);
 	server.sin_addr.s_addr = INADDR_ANY;
 	bzero(server.sin_zero, 8);
-
-	setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, (const char *)&opt, sizeof(int));
+	long long bsize=10000000000;
+	setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, &bsize, sizeof(bsize));
 
 	r = bind(serverfd, (struct sockaddr *)&server, sizeof(struct sockaddr));
 	if (r < 0)
@@ -182,10 +167,9 @@ int main()
 
 	while (1)
 	{
-		connections++;
-		clientfd[connections] = accept(serverfd, (struct sockaddr *)&client, &tamano);
+		clientfd = accept(serverfd, (struct sockaddr *)&client, &tamano);
 		arg->ht = ht;
-		arg->socket = clientfd[connections];
+		arg->socket = clientfd;
 
 		if (pthread_create(&tid[connections], NULL, socketThread, (void *)arg) != 0)
 		{
@@ -225,7 +209,6 @@ void *socketThread(void *arg)
 	int clientfd = ((struct arguments *)arg)->socket;
 	FILE *f;
 	f = fopen("serverDogs.log", "a");
-
 	if (f == NULL)
 	{
 		perror("Error fopen");
@@ -364,7 +347,7 @@ void *socketThread(void *arg)
 			if (r = 0)
 			{
 				perror("\n-->Error en fprintf: ");
-				//exit(-1);
+				exit(-1);
 			}
 			break;
 
@@ -376,6 +359,9 @@ void *socketThread(void *arg)
 				exit(-1);
 			}
 			key = (char *)nombre;
+			struct dogType *vectorR;
+			vectorR = (struct dogType *)malloc(80000 * sizeof(struct dogType));
+			int conta = 0;
 
 			Ht_item *val = ht_search(ht, key);
 			if (val == NULL)
@@ -408,15 +394,14 @@ void *socketThread(void *arg)
 					exit(-1);
 				}
 
-				//int i=0;
-				//int j=0;
-
 				while (mascota.next != -1)
 				{
 					if (strcmp(mascota.nombre, key) == 0)
 					{
-						r = send(clientfd, &pos, sizeof(int), 0);
-						r = send(clientfd, &mascota, sizeof(struct dogType), 0);
+						//r = send(clientfd, &pos, sizeof(int), 0);
+						//r = send(clientfd, &mascota, sizeof(struct dogType), 0);
+						vectorR[conta]=mascota;
+						conta++;
 					}
 					r = fseek(archivo, mascota.next, SEEK_SET);
 					if (r != 0)
@@ -434,31 +419,34 @@ void *socketThread(void *arg)
 				}
 				if (strcmp(mascota.nombre, key) == 0)
 				{
-					r = send(clientfd, &pos, sizeof(int), 0);
-					r = send(clientfd, &mascota, sizeof(struct dogType), 0);
+
+					//r = send(clientfd, &pos, sizeof(int), 0);
+					//r = send(clientfd, &mascota, sizeof(struct dogType), 0);
+					vectorR[conta]=mascota;
+					conta++;
 				}
-				struct dogType ultimo;
-				ultimo.nombre[0] = '*';
-				ultimo.edad = 0;
-				ultimo.estatura = 0;
-				ultimo.peso = 0;
-				ultimo.sexo = ' ';
-				int x = -1;
-				
-				r = send(clientfd, &x, sizeof(int), 0);
-				r = send(clientfd, &ultimo, sizeof(struct dogType), 0);
 				r = fclose(archivo);
 				if (r < 0)
 				{
-					perror("Error fclose mostrar Hist");
+					perror("Error fclose");
 					exit(-1);
 				}
 			}
 
-		
-			
-			printf("termine aqui\n");
-			fprintf(f, "[Fecha %s] [Cliente %s] [Bùsqueda] [Cadena buscada: %s]\n", bufff, clientip, nombre);
+			struct dogType ultimo;
+			sprintf(ultimo.nombre,"puto");
+			int x = -1;
+			//r = send(clientfd, &x, sizeof(int), 0);
+			//r = send(clientfd, &ultimo, sizeof(struct dogType), 0);
+			vectorR[conta]=ultimo;
+			conta++;
+			printf("%c",vectorR[conta].nombre[0]);
+			r = send(clientfd, &conta, sizeof(int), 0);
+			r = send(clientfd, vectorR, conta * sizeof(struct dogType), 0);
+			free(vectorR);
+			printf("%d",r);
+			r = fprintf(f, "[MANDADO %d]\n", r);
+			r = fprintf(f, "[Fecha %s] [Cliente %s] [Bùsqueda] [Cadena buscada: %s]\n", bufff, clientip, nombre);
 			if (r = 0)
 			{
 				perror("\n-->Error en fprintf: ");
@@ -677,7 +665,7 @@ HashTable *ht_insert(HashTable *table, char *key, int value)
 		r = fclose(archivo);
 		if (r < 0)
 		{
-			perror("Error fclose ht_insert");
+			perror("Error fclose");
 			exit(-1);
 		}
 		return table;
@@ -726,7 +714,7 @@ HashTable *guardarRegistro(HashTable *table, void *puntero)
 	r = fclose(archivo);
 	if (r < 0)
 	{
-		perror("Error fclose guardarRegistro");
+		perror("Error fclose");
 		exit(-1);
 	}
 	return table;
@@ -754,13 +742,15 @@ struct HashTable *hash_db()
 		{
 			int posicion = ftell(ptr) - sizeof(struct dogType);
 			ht_insert(ht, dog.nombre, posicion);
-			
+			//registros++;
+			//i++;
+			//printf("numero registros : %d\n", registros);
 		}
 	}
 	r = fclose(ptr);
 	if (r < 0)
 	{
-		perror("Error fclose hash_db");
+		perror("Error fclose");
 		exit(-1);
 	}
 	return ht;
@@ -819,7 +809,7 @@ int borrarRegistro(int posicion)
 	r = fclose(archivo);
 	if (r < 0)
 	{
-		perror("Error fclose borrar");
+		perror("Error fclose");
 		exit(-1);
 	}
 	return 0;
@@ -940,7 +930,7 @@ HashTable *delete_item(HashTable *table, char *key, int code)
 		r = fclose(archivo);
 		if (r < 0)
 		{
-			perror("Error fclose delete");
+			perror("Error fclose");
 			exit(-1);
 		}
 	}
@@ -971,7 +961,7 @@ struct dogType leerEsctructura(int id, struct dogType dog)
 	r = fclose(ptr);
 	if (r < 0)
 	{
-		perror("Error fclose estructura");
+		perror("Error fclose");
 		exit(-1);
 	}
 	return dog;
