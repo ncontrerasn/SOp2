@@ -398,6 +398,84 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 {
 
 	FILE *historia;
+	char buff[500], *archivo = malloc(sizeof(char) * 500), dir[500] = "gedit ", borrar[500] = "rm ", ch;
+	int r, cont = 0;
+
+	strcpy(archivo, id);
+	strcat(archivo, "_");
+	strcat(archivo, nombre);
+	strcat(archivo, ".txt");
+
+	historia = fopen(archivo, "w");
+	if (historia == NULL)
+	{
+		perror("error fopen");
+		exit(-1);
+	}
+	r = recv(clientfd,buff,sizeof(buff), 0);
+
+	if(r < 0){
+		perror("\n-->Error en recv(): ");
+		exit(-1);
+	}
+
+	if(buff[0] ==' ')
+		printf(" ");
+	else
+		fprintf(historia, "%s", buff);
+
+	r = fclose(historia);
+	if (r < 0)
+	{
+		perror("Error fclose");
+		exit(-1);
+	}
+
+	strcat(dir, id);
+	strcat(dir, "_");
+	strcat(dir, nombre);
+	strcat(dir, ".txt");
+
+	system(dir);
+
+	historia = fopen(archivo, "r");
+	if (historia == NULL)
+	{
+		perror("error fopen ");
+		exit(-1);
+	}
+	while ((ch = fgetc(historia)) != EOF)
+        {
+            buff[cont] = ch;
+            cont++;
+        }
+
+    char buffS[cont-2];
+    for (int i = 0; i < cont-1; i++)
+        buffS[i] = buff[i];
+
+    r = send(clientfd, buffS, sizeof(buffS) + 1, 0);
+	if (r < 0)
+		{
+			perror("\n-->Error en send() jueputa: ");
+			exit(-1);
+		}
+
+	strcat(borrar, id);
+	strcat(borrar, "_");
+	strcat(borrar, nombre);
+	strcat(borrar, ".txt");
+	system(borrar);
+	free(archivo);
+
+	return 0;
+}
+
+/*
+int mostrarHistoria(char nombre[], char id[], int clientfd)
+{
+
+	FILE *historia;
 	char buff[500], archivo[500], dir[500] = "gedit ", borrar[500] = "rm ", ch;
 	int r, cont = 0;
 
@@ -469,7 +547,7 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 
 	return 0;
 }
-
+*/
 char getch(void)
 {
 	char buf = 0;

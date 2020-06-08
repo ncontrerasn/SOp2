@@ -463,6 +463,57 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 
 	FILE *historia;
 	int r;
+	//char dir[500], cwd[500], buff[500], borrar[500] = "rm ";
+	char *dir=malloc(sizeof(char)*500), buff[500], borrar[500] = "rm ";
+
+	strcpy(dir, "historias_clinicas/");
+	strcat(dir, id);
+	strcat(dir, "_");
+	strcat(dir, nombre);
+	strcat(dir, ".txt");
+
+	historia = fopen(dir, "a+");
+	if (historia == NULL)
+	{
+		perror("error fopen ");
+		exit(-1);
+	}
+	free(dir);
+	fseek(historia, 0, SEEK_END);
+	if (ftell(historia) == 0)
+	{
+		r = send(clientfd, " ", sizeof(char), 0);
+		if (r < 0)
+		{
+			perror("\n-->Error en send(): ");
+			exit(-1);
+		}
+	}
+	else
+	{
+		fseek(historia, 0, SEEK_SET);
+		fread(buff, sizeof(buff), 1, historia);
+
+		r = send(clientfd, buff, sizeof(buff), 0);
+		if (r < 0)
+		{
+			perror("\n-->Error en send(): ");
+			exit(-1);
+		}
+	}
+	fclose(historia);
+	
+
+	return 0;
+}
+
+
+/*
+int mostrarHistoria(char nombre[], char id[], int clientfd)
+{
+
+	FILE *historia;
+	int r;
 	char dir[500], cwd[500], buff[500], borrar[500] = "rm ";
 
 	strcpy(dir, "historias_clinicas/");
@@ -503,7 +554,37 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 
 	return 0;
 }
+*/
 
+int guardarHistoria(char nombre[], char id[], int clientfd)
+{
+
+	FILE *historia;
+	int r, cont = 0;
+	char *dir=malloc(sizeof(char)*500), buff[500];
+
+	strcpy(dir, "historias_clinicas/");
+	strcat(dir, id);
+	strcat(dir, "_");
+	strcat(dir, nombre);
+	strcat(dir, ".txt");
+
+	historia = fopen(dir, "w");
+	if (historia == NULL)
+	{
+		perror("error fopen");
+		exit(-1);
+	}
+	free(dir);
+	r = recv(clientfd, buff, sizeof(buff), 0);
+
+	fprintf(historia, "%s", buff);
+	fseek(historia, 0, SEEK_SET);
+	fclose(historia);
+
+	return 0;
+}
+/*
 int guardarHistoria(char nombre[], char id[], int clientfd)
 {
 
@@ -530,6 +611,8 @@ int guardarHistoria(char nombre[], char id[], int clientfd)
 
 	return 0;
 }
+*/
+
 //HASH
 unsigned long hash_function(char *str)
 {
