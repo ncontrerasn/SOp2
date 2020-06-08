@@ -197,6 +197,7 @@ int main(int argc, char **argv)
 			else
 			{
 				r = send(clientfd, "n", sizeof(char), 0);
+				printf("\n          Presiona cualquier tecla para regresar al menù.\n");
 				if (r < 0)
 				{
 					perror("\n-->Error en send(): ");
