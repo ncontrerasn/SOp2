@@ -12,7 +12,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#define PORT 3543
+#define PORT 3534
 
 struct dogType
 {
@@ -35,6 +35,25 @@ int registrarMascota(void *puntero);
 int verMascota(struct dogType mascota);
 
 int mostrarHistoria(char nombre[], char id[], int clientfd);
+
+int RecvAll(int client_socket, void *data, int data_size)
+{
+    char *data_ptr = (char*) data;
+    int bytes_recv;
+
+    while (data_size > 0)
+    {
+        bytes_recv = recv(client_socket, data_ptr, data_size, 0);
+        if (bytes_recv <= 0)
+            return bytes_recv;
+
+        data_ptr += bytes_recv;
+        data_size -= bytes_recv;
+    }
+
+    return bytes_recv;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -263,8 +282,11 @@ int main(int argc, char **argv)
 				printf("\n");
 				int i = 0, cont, acc = 0;
 				r = recv(clientfd, &cont, sizeof(int), 0);
+				//printf("r1:%i\n", r);
 				struct dogType *vectorR = (struct dogType *)malloc(cont * sizeof(struct dogType));
-				r = recv(clientfd, vectorR, sizeof(struct dogType)*cont, 0);
+				r = RecvAll(clientfd, vectorR, sizeof(struct dogType)*cont);
+				//printf("r2:%i\n", r);
+				//break;
 				while (i<cont-1){
 					printf("          Id: %d\n", vectorR[i].next);
 					verMascota(vectorR[i]);
@@ -274,7 +296,7 @@ int main(int argc, char **argv)
 				}
 				if (cont == 1)
 					printf("          La mascota no està registrada en la base de datos.\n");
-				printf("contador %d", cont - 1);
+				//printf("contador %d", cont - 1);
 				free(vectorR);
 			}
 			__fpurge(stdin);

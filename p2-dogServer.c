@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#define PORT 3543
+#define PORT 3534
 #define BACKLOG 2
 #define BUF_LEN 256
 #define CAPACITY 1800
@@ -89,6 +89,30 @@ struct arguments
 	int socket;
 };
 
+
+int
+send_all(int socket, const void *buffer, size_t length, int flags)
+{
+    ssize_t n;
+    const char *p = buffer;
+    while (length > 0)
+    {
+        n = send(socket, p, length, flags);
+        if (n <= 0)
+            return -1;
+        p += n;
+        length -= n;
+    }
+    return 0;
+}
+
+
+
+
+
+
+
+
 int main()
 {
 
@@ -96,6 +120,8 @@ int main()
 
 	HashTable *ht = hash_db();
 	int r;
+
+	printf("\nServer ready\n");
 
 	//Sockets
 	int serverfd, clientfd;
@@ -136,7 +162,7 @@ int main()
 	//Threads
 	pthread_t tid[60]; //max connections
 	int connections = 0;
-
+	
 	while (1)
 	{
 		clientfd = accept(serverfd, (struct sockaddr *)&client, &tamano);
@@ -205,8 +231,10 @@ void *socketThread(void *arg)
 		r = recv(clientfd, opcion, sizeof(char), 0);
 		if (r < 0)
 		{
-			perror("\n-->Error en recv(): ");
-			exit(-1);
+			
+			perror("\n-->Error en recv(1): ");
+			printf("\nr:%i",r);	
+			//exit(-1);
 		}
 
 		switch (opcion[0])
@@ -216,7 +244,7 @@ void *socketThread(void *arg)
 			ht = guardarRegistro(ht, (void *)mascota);
 			if (r < 0)
 			{
-				perror("\n-->Error en recv(): ");
+				perror("\n-->Error en recv(2): ");
 				exit(-1);
 			}
 
@@ -239,7 +267,7 @@ void *socketThread(void *arg)
 			r = recv(clientfd, &id, sizeof(int), 0);
 			if (r < 0)
 			{
-				perror("\n-->Error en recv(): ");
+				perror("\n-->Error en recv(3): ");
 				exit(-1);
 			}
 			struct dogType dog;
@@ -255,7 +283,7 @@ void *socketThread(void *arg)
 			r = recv(clientfd, historia, sizeof(char), 0);
 			if (r < 0)
 			{
-				perror("\n-->Error en recv(): ");
+				perror("\n-->Error en recv(4): ");
 				exit(-1);
 			}
 
@@ -291,7 +319,7 @@ void *socketThread(void *arg)
 			r = recv(clientfd, &id, sizeof(int), 0);
 			if (r < 0)
 			{
-				perror("\n-->Error en recv(): ");
+				perror("\n-->Error en recv(5): ");
 				exit(-1);
 			}
 
@@ -325,7 +353,7 @@ void *socketThread(void *arg)
 			r = recv(clientfd, nombre, sizeof(char) * 32, 0);
 			if (r < 0)
 			{
-				perror("\n-->Error en recv(): ");
+				perror("\n-->Error en recv(6): ");
 				exit(-1);
 			}
 			key = (char *)nombre;
@@ -405,7 +433,11 @@ void *socketThread(void *arg)
 			vectorR[conta] = ultimo;
 			conta++;
 			r = send(clientfd, &conta, sizeof(int), 0);
-			r = send(clientfd, vectorR, conta * sizeof(struct dogType), 0);
+			//printf("r1:%i\n", r);
+
+
+			r = send_all(clientfd, vectorR, conta * sizeof(struct dogType), 0);
+			//printf("r2:%i\n", r);
 			free(vectorR);
 			r = fprintf(f, "[Fecha %s] [Cliente %s] [Bùsqueda] [Cadena buscada: %s]\n", bufff, clientip, nombre);
 			if (r = 0)
