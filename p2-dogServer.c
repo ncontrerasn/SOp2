@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#define PORT 3534
+#define PORT 3535
 #define BACKLOG 2
 #define BUF_LEN 256
 #define CAPACITY 1800
@@ -225,7 +225,7 @@ void *socketThread(void *arg)
 	time_t rawtime = time(NULL);
 	struct tm *ptm = localtime(&rawtime);
 	strftime(bufff, BUF_LEN, "%d/%m/%YT%X", ptm);
-
+	__wur(stdin);
 	do
 	{
 		r = recv(clientfd, opcion, sizeof(char), 0);

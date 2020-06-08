@@ -12,7 +12,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#define PORT 3534
+#define PORT 3535
 
 struct dogType
 {
@@ -91,7 +91,7 @@ int main(int argc, char **argv)
 		perror("Error malloc");
 		exit(-1);
 	}
-
+	__fpurge(stdin);
 	do
 	{
 		opcion = menu(opcion);
