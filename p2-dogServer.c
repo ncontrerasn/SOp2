@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h> 
 
 #define PORT 3535
 #define BACKLOG 2
@@ -69,6 +70,19 @@ Ht_item *ht_search(HashTable *table, char *key);
 
 HashTable *guardarRegistro(HashTable *table, void *puntero);
 
+
+int clientfd;
+int serverfd;
+
+void handle_sigint(int sig) 
+{ 
+    close(clientfd);
+    close(serverfd);
+    printf("\nServidor apagado\n"); 
+    exit(-1);
+
+}
+
 struct HashTable *hash_db();
 //FIN HASH
 int borrarRegistro(int posicion);
@@ -89,9 +103,8 @@ struct arguments
 	int socket;
 };
 
-
-int
-send_all(int socket, const void *buffer, size_t length, int flags)
+//funcion para mandar el arreglo completo de la consulta de la opcion 4
+int send_all(int socket, const void *buffer, size_t length, int flags)
 {
     ssize_t n;
     const char *p = buffer;
@@ -106,25 +119,18 @@ send_all(int socket, const void *buffer, size_t length, int flags)
     return 0;
 }
 
-
-
-
-
-
-
-
 int main()
 {
 
+	signal(SIGINT, handle_sigint);
 	struct arguments *arg = (struct arguments *)malloc(sizeof(struct arguments));
 
 	HashTable *ht = hash_db();
 	int r;
 
-	printf("\nServer ready\n");
+	printf("\n");
 
 	//Sockets
-	int serverfd, clientfd;
 	struct sockaddr_in server, client;
 	socklen_t tamano;
 
@@ -155,15 +161,13 @@ int main()
 		perror("\n-->Error en Listen(): ");
 		exit(-1);
 	}
-	//TODO OK
-
-	//Cambio a threads
 
 	//Threads
-	pthread_t tid[60]; //max connections
+	pthread_t tid[32]; //max connections
 	int connections = 0;
 	
-	while (1)
+	//recibir clientes
+	while (connections < 32)
 	{
 		clientfd = accept(serverfd, (struct sockaddr *)&client, &tamano);
 		arg->ht = ht;
@@ -173,15 +177,9 @@ int main()
 		{
 			perror("Failed to create thread\n");
 		}
+		connections++;
 	}
 
-	//ip in log - moved to thread
-	/*
-	*/
-
-	// ALL MAIN moved to thread function
-	/*
-	*/
 	return 0;
 }
 
@@ -200,6 +198,7 @@ void *socketThread(void *arg)
 		perror("Error malloc");
 		exit(-1);
 	}
+
 	//Arguments
 	HashTable *ht = ((struct arguments *)arg)->ht;
 	int clientfd = ((struct arguments *)arg)->socket;
@@ -211,14 +210,12 @@ void *socketThread(void *arg)
 		exit(-1);
 	}
 
-	//Ip log
+	//Ip cliente
 	struct sockaddr_in addr;
 	socklen_t addr_size = sizeof(struct sockaddr_in);
 	int res = getpeername(clientfd, (struct sockaddr *)&addr, &addr_size);
 	char *clientip = (char *)malloc(20 * sizeof(char));
 	strcpy(clientip, inet_ntoa(addr.sin_addr));
-	//printf("Client IP: %s\n", clientip);
-	//
 
 	//LOG
 	char bufff[BUF_LEN] = {0};
@@ -240,6 +237,7 @@ void *socketThread(void *arg)
 		switch (opcion[0])
 		{
 		case '1':
+			//registra la mascota recibida
 			r = recv(clientfd, mascota, sizeof(struct dogType), 0);
 			ht = guardarRegistro(ht, (void *)mascota);
 			if (r < 0)
@@ -257,6 +255,7 @@ void *socketThread(void *arg)
 			break;
 
 		case '2':
+			//para consultar la mascota y perimitir abrir historia clinica
 			r = send(clientfd, &registros, sizeof(int), 0);
 			if (r < 0)
 			{
@@ -309,6 +308,7 @@ void *socketThread(void *arg)
 			break;
 
 		case '3':
+			//eliminar una mascota
 			r = send(clientfd, &registros, sizeof(int), 0);
 			if (r < 0)
 			{
@@ -350,6 +350,7 @@ void *socketThread(void *arg)
 			break;
 
 		case '4':
+			//buscar mascotas por nombre
 			r = recv(clientfd, nombre, sizeof(char) * 32, 0);
 			if (r < 0)
 			{
@@ -358,7 +359,7 @@ void *socketThread(void *arg)
 			}
 			key = (char *)nombre;
 			struct dogType *vectorR;
-			vectorR = (struct dogType *)malloc(80000 * sizeof(struct dogType));
+			vectorR = (struct dogType *)malloc(10000 * sizeof(struct dogType));
 			int conta = 0;
 
 			Ht_item *val = ht_search(ht, key);
@@ -433,38 +434,33 @@ void *socketThread(void *arg)
 			vectorR[conta] = ultimo;
 			conta++;
 			r = send(clientfd, &conta, sizeof(int), 0);
-			//printf("r1:%i\n", r);
-
-
 			r = send_all(clientfd, vectorR, conta * sizeof(struct dogType), 0);
-			//printf("r2:%i\n", r);
 			free(vectorR);
 			r = fprintf(f, "[Fecha %s] [Cliente %s] [Bùsqueda] [Cadena buscada: %s]\n", bufff, clientip, nombre);
 			if (r = 0)
 			{
 				perror("\n-->Error en fprintf: ");
-				//exit(-1);
 			}
 			break;
 
 		case '5':
+			//salir
 			fclose(f);
 			break;
 		}
 
 	} while (opcion[0] != '5');
-	//printf("\nExit client \n");
 	close(clientfd);
 	pthread_exit(NULL);
 }
 
+//funciòn que manda el contenido de la historia si ya existe, en caso contrario, la crea y manda blanco
 int mostrarHistoria(char nombre[], char id[], int clientfd)
 {
 
 	FILE *historia;
 	int r;
-	//char dir[500], cwd[500], buff[500], borrar[500] = "rm ";
-	char *dir=malloc(sizeof(char)*500), buff[500], borrar[500] = "rm ";
+	char *dir = malloc(sizeof(char)*500), buff[500], borrar[500] = "rm ";
 
 	strcpy(dir, "historias_clinicas/");
 	strcat(dir, id);
@@ -507,55 +503,7 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 	return 0;
 }
 
-
-/*
-int mostrarHistoria(char nombre[], char id[], int clientfd)
-{
-
-	FILE *historia;
-	int r;
-	char dir[500], cwd[500], buff[500], borrar[500] = "rm ";
-
-	strcpy(dir, "historias_clinicas/");
-	strcat(dir, id);
-	strcat(dir, "_");
-	strcat(dir, nombre);
-	strcat(dir, ".txt");
-
-	historia = fopen(dir, "a+");
-	if (historia == NULL)
-	{
-		perror("error fopen ");
-		exit(-1);
-	}
-	fseek(historia, 0, SEEK_END);
-	if (ftell(historia) == 0)
-	{
-		r = send(clientfd, " ", sizeof(char), 0);
-		if (r < 0)
-		{
-			perror("\n-->Error en send(): ");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fseek(historia, 0, SEEK_SET);
-		fread(buff, sizeof(buff), 1, historia);
-
-		r = send(clientfd, buff, sizeof(buff), 0);
-		if (r < 0)
-		{
-			perror("\n-->Error en send(): ");
-			exit(-1);
-		}
-	}
-	fclose(historia);
-
-	return 0;
-}
-*/
-
+//guarda lo que escribio el cliente
 int guardarHistoria(char nombre[], char id[], int clientfd)
 {
 
@@ -584,34 +532,6 @@ int guardarHistoria(char nombre[], char id[], int clientfd)
 
 	return 0;
 }
-/*
-int guardarHistoria(char nombre[], char id[], int clientfd)
-{
-
-	FILE *historia;
-	int r;
-	char dir[500], cwd[500], buff[500];
-
-	strcpy(dir, "historias_clinicas/");
-	strcat(dir, id);
-	strcat(dir, "_");
-	strcat(dir, nombre);
-	strcat(dir, ".txt");
-
-	historia = fopen(dir, "w");
-	if (historia == NULL)
-	{
-		perror("error fopen");
-		exit(-1);
-	}
-	r = recv(clientfd, buff, 100, 0);
-
-	fprintf(historia, "%s", buff);
-	fclose(historia);
-
-	return 0;
-}
-*/
 
 //HASH
 unsigned long hash_function(char *str)
@@ -666,18 +586,6 @@ void free_table(HashTable *table)
 	free(table->items);
 	free(table);
 }
-
-/*imprimir HASH TABLE (Pruebas)
-void print_table(HashTable *table)
-{
-	int i;
-	printf("\nHash Table\n-------------------\n");
-	for (i = 0; i < table->size; i++)
-		if (table->items[i])
-			printf("Index:%d, Key:%d, Value:%d\n", i, table->items[i]->head, table->items[i]->tail);
-	printf("-------------------\n\n");
-}
-*/
 
 HashTable *ht_insert(HashTable *table, char *key, int value)
 {
@@ -818,9 +726,6 @@ struct HashTable *hash_db()
 		{
 			int posicion = ftell(ptr) - sizeof(struct dogType);
 			ht_insert(ht, dog.nombre, posicion);
-			//registros++;
-			//i++;
-			//printf("numero registros : %d\n", registros);
 		}
 	}
 	r = fclose(ptr);
@@ -897,7 +802,6 @@ HashTable *delete_item(HashTable *table, char *key, int code)
 	Ht_item *val = ht_search(table, key);
 	if (val == NULL)
 	{
-		//printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", key);
 		return NULL;
 	}
 	else
@@ -1002,7 +906,6 @@ HashTable *delete_item(HashTable *table, char *key, int code)
 			}
 		}
 
-		//printf("          La mascota con el ID: %s no esta registrado en la base de datos\n", key);
 		r = fclose(archivo);
 		if (r < 0)
 		{
