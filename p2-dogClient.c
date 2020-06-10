@@ -36,6 +36,7 @@ int verMascota(struct dogType mascota);
 
 int mostrarHistoria(char nombre[], char id[], int clientfd);
 
+//funcion para recibir el arreglo de la consulta de la opcion 4
 int RecvAll(int client_socket, void *data, int data_size)
 {
     char *data_ptr = (char*) data;
@@ -53,7 +54,6 @@ int RecvAll(int client_socket, void *data, int data_size)
 
     return bytes_recv;
 }
-
 
 int main(int argc, char **argv)
 {
@@ -99,6 +99,7 @@ int main(int argc, char **argv)
 		switch (opcion)
 		{
 		case 1:
+			//registra la mascota 
 			validacion = registrarMascota((void *)mascota);
 			if (validacion != 0)
 			{
@@ -126,14 +127,15 @@ int main(int argc, char **argv)
 			getch();
 			break;
 		case 2:
+			//para consultar la mascota y perimitir abrir historia clinica
 			r = send(clientfd, "2", sizeof(char), 0);
 			if (r < 0)
 			{
 				perror("\n-->Error en send(): ");
 				exit(-1);
 			}
-
-			r = recv(clientfd, &numRegistros, sizeof(int), 0); //recibe numero de registros
+			//recibe numero de registros
+			r = recv(clientfd, &numRegistros, sizeof(int), 0); 
 			if (r < 0)
 			{
 				perror("\n-->Error en recv(): ");
@@ -160,7 +162,6 @@ int main(int argc, char **argv)
 				perror("\n-->Error en recv(): ");
 				exit(-1);
 			}
-	
 
 			validacion = verMascota(dog);
 			if (validacion == 1)
@@ -207,7 +208,7 @@ int main(int argc, char **argv)
 
 			break;
 		case 3:
-
+			//eliminar una mascota
 			r = send(clientfd, "3", sizeof(char), 0);
 			if (r < 0)
 			{
@@ -254,6 +255,7 @@ int main(int argc, char **argv)
 			}
 			break;
 		case 4:
+			//buscar mascotas por nombre
 			printf("          Ingresa el nombre de la mascota: ");
 			scanf("%s", nombre);
 			for (i = 0; nombre[i]; i++)
@@ -283,11 +285,8 @@ int main(int argc, char **argv)
 				printf("\n");
 				int i = 0, cont, acc = 0;
 				r = recv(clientfd, &cont, sizeof(int), 0);
-				//printf("r1:%i\n", r);
 				struct dogType *vectorR = (struct dogType *)malloc(cont * sizeof(struct dogType));
 				r = RecvAll(clientfd, vectorR, sizeof(struct dogType)*cont);
-				//printf("r2:%i\n", r);
-				//break;
 				while (i<cont-1){
 					printf("          Id: %d\n", vectorR[i].next);
 					verMascota(vectorR[i]);
@@ -297,7 +296,6 @@ int main(int argc, char **argv)
 				}
 				if (cont == 1)
 					printf("          La mascota no està registrada en la base de datos.\n");
-				//printf("contador %d", cont - 1);
 				free(vectorR);
 			}
 			__fpurge(stdin);
@@ -305,6 +303,7 @@ int main(int argc, char **argv)
 			getch();
 			break;
 		case 5:
+			//salir
 			r = send(clientfd, "5", sizeof(char), 0);
 			if (r < 0)
 			{
@@ -395,6 +394,7 @@ int verMascota(struct dogType mascota)
 	}
 }
 
+//funcion para abrir las historia de la mascota y enviar la informacion al servidor
 int mostrarHistoria(char nombre[], char id[], int clientfd)
 {
 
@@ -472,83 +472,6 @@ int mostrarHistoria(char nombre[], char id[], int clientfd)
 	return 0;
 }
 
-/*
-int mostrarHistoria(char nombre[], char id[], int clientfd)
-{
-
-	FILE *historia;
-	char buff[500], archivo[500], dir[500] = "gedit ", borrar[500] = "rm ", ch;
-	int r, cont = 0;
-
-	strcpy(archivo, id);
-	strcat(archivo, "_");
-	strcat(archivo, nombre);
-	strcat(archivo, ".txt");
-
-	historia = fopen(archivo, "w");
-	if (historia == NULL)
-	{
-		perror("error fopen");
-		exit(-1);
-	}
-	r = recv(clientfd,buff,sizeof(buff), 0);
-
-	if(r < 0){
-		perror("\n-->Error en recv(): ");
-		exit(-1);
-	}
-
-	if(buff[0]==' ') 
-		printf(" ");
-	else
-		fprintf(historia, "%s", buff);
-
-	r = fclose(historia);
-	if (r < 0)
-	{
-		perror("Error fclose");
-		exit(-1);
-	}
-
-	strcat(dir, id);
-	strcat(dir, "_");
-	strcat(dir, nombre);
-	strcat(dir, ".txt");
-
-	system(dir);
-
-	historia = fopen(archivo, "r");
-	if (historia == NULL)
-	{
-		perror("error fopen ");
-		exit(-1);
-	}
-	while ((ch = fgetc(historia)) != EOF)
-        {
-            buff[cont] = ch;
-            cont++;
-        }
-
-    char buffS[cont-2];
-    for (int i = 0; i < cont-1; i++)
-        buffS[i]=buff[i];
-
-    r = send(clientfd,buffS,sizeof(buffS) + 1, 0);
-	if (r < 0)
-		{
-			perror("\n-->Error en send(): ");
-			exit(-1);
-		}
-
-	strcat(borrar, id);
-	strcat(borrar, "_");
-	strcat(borrar, nombre);
-	strcat(borrar, ".txt");
-	system(borrar);
-
-	return 0;
-}
-*/
 char getch(void)
 {
 	char buf = 0;
